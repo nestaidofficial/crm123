@@ -1,0 +1,395 @@
+Forms Module (House of Forms) — Front-End Plan
+1) Navigation + Concept
+
+Left sidebar: Forms
+
+Concept: Form Library
+
+Pre-made system forms
+
+Agency-customized forms
+
+Reusable across onboarding, visits, incidents, billing
+
+2) Forms Home (Library View)
+Page Header
+
+Title: Forms
+
+Subtitle: Create, customize, and reuse forms across your agency
+
+Right actions:
+
+Create Form
+
+Duplicate Form
+
+Import (PDF / DOCX) (optional later)
+
+Form Cards Grid (core UI)
+
+Each form = card
+
+Card content
+
+Form name
+
+Category (Onboarding / Care / Compliance / HR)
+
+Status badge:
+
+System (locked base)
+
+Agency custom
+
+Used in:
+
+Onboarding
+
+Shifts
+
+Incidents
+
+Billing
+
+Actions (⋯):
+
+Open
+
+Edit
+
+Duplicate
+
+Archive
+
+Card click behavior
+
+Opens Form Editor (not submission view)
+
+3) Form Editor (when card is clicked)
+Layout
+Left: Section list       | Right: Live form preview
+---------------------------------------------------
+
+Left Panel – Form Structure
+
+Sections (draggable):
+
+Personal Info
+
+Work Eligibility
+
+Skills
+
+Availability
+
+Signatures
+
+Each section:
+
+Toggle show/hide
+
+Rename
+
+Delete (agency forms only)
+
+Add section button
+
+Right Panel – Form Preview (Editable)
+
+Inline editing
+
+Click field → edit:
+
+Label
+
+Field type
+
+Required / optional
+
+Helper text
+
+Supported fields:
+
+Text
+
+Number
+
+Dropdown
+
+Checkbox
+
+Radio
+
+Date
+
+File upload
+
+Signature
+
+Yes/No
+
+Multi-select
+
+Top Bar (Editor Controls)
+
+Form name
+
+Category
+
+Buttons:
+
+Save
+
+Save as New Form
+
+Reset to System Default (system forms only)
+
+Preview (read-only)
+
+Publish
+
+Rules
+
+System forms:
+
+Cannot delete entire form
+
+Can remove sections
+
+Can rename fields
+
+Agency forms:
+
+Full control
+
+Changes do NOT affect existing submissions
+
+4) Form Settings (Side Drawer)
+
+Form visibility:
+
+Onboarding
+
+Employee profile
+
+Client profile
+
+Shift completion
+
+Incident reporting
+
+Assignment:
+
+Required / Optional
+
+Role-based (caregiver / admin)
+
+Submission rules:
+
+One-time
+
+Per shift
+
+Per incident
+
+Signature required toggle
+
+Auto-PDF generation toggle
+
+5) Form Submissions View
+Access
+
+Forms → Click form → Submissions tab
+
+Table
+
+Submitted by
+
+Related to (Employee / Client / Shift)
+
+Status (Submitted / Reviewed)
+
+Submitted on
+
+Actions: View / Download PDF / Add note
+
+6) Form Usage (where forms appear)
+
+Forms can be attached to:
+
+Employee onboarding
+
+Client intake
+
+Shift completion
+
+Incident reporting
+
+Compliance tracking
+
+This makes forms part of workflow, not standalone.
+
+5 Essential Premade Forms for Home Care Agencies
+
+These should ship as System Forms.
+
+1) Caregiver Application Form
+
+Category: Onboarding / HR
+
+Sections
+
+Personal information
+
+Contact details
+
+Work authorization
+
+Experience & certifications
+
+Skills checklist (ADLs, dementia, transfers)
+
+Availability
+
+References
+
+Signature + consent
+
+Used in
+
+Caregiver onboarding
+
+HR review
+
+2) Client Intake & Care Needs Form
+
+Category: Care / Intake
+
+Sections
+
+Client demographics
+
+Emergency contacts
+
+Medical conditions
+
+Mobility & ADLs
+
+Preferences (language, gender)
+
+Safety notes
+
+Care goals
+
+Family consent signature
+
+Used in
+
+Client profile
+
+Care plan creation
+
+3) Caregiver Onboarding Compliance Checklist
+
+Category: Compliance
+
+Sections
+
+Background check status
+
+ID verification
+
+CPR / First Aid
+
+TB test / vaccinations
+
+Driver’s license & insurance
+
+Contract acknowledgment
+
+Used in
+
+HR compliance
+
+Employee profile
+
+4) Visit / Shift Completion Form
+
+Category: Care / EVV
+
+Sections
+
+Tasks performed (checklist)
+
+Notes
+
+Issues / incidents
+
+Client mood / condition
+
+Follow-up needed
+
+Signature (optional)
+
+Used in
+
+End of shift
+
+EVV verification
+
+Billing support
+
+5) Incident / Accident Report Form
+
+Category: Compliance / Risk
+
+Sections
+
+Incident date & time
+
+Location
+
+People involved
+
+Description
+
+Immediate actions taken
+
+Injury severity
+
+Witnesses
+
+Supervisor review
+
+Signatures
+
+Used in
+
+Incident tracking
+
+Compliance audits
+
+7) Empty States (important UX)
+
+No forms:
+
+“Start with premade forms or create your own.”
+
+No submissions:
+
+“No submissions yet.”
+
+Locked system form:
+
+“This is a system form. Customize by duplicating.”
+
+8) Why this works (internally)
+
+Agencies get ready-to-use forms day 1
+
+They can customize without breaking compliance
+
+You avoid PDF chaos
+
+Forms become structured data, not documents

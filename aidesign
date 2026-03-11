@@ -1,0 +1,182 @@
+This is the main “Nessa AI” dashboard where agency staff/admin can:
+
+search for AI agents
+
+view a curated set of key agents for homecare workflows
+
+open an agent details modal
+
+click “Run agent” (mock action)
+
+No need to build the entire app layout—only this main content area (optionally include a minimal header inside the component).
+
+Layout Structure (Main Section)
+1) Top Header (minimal, inside component)
+
+Left: Title “Nessa AI” (subtitle: “Automate homecare operations”)
+
+Right: small buttons:
+
+“View Activity”
+
+“Create Agent” (opens modal placeholder)
+
+Keep simple and premium.
+
+2) Hero Search Bar (the main section)
+
+A prominent centered search input like the screenshot:
+
+Large search field with placeholder:
+“Search agents: scheduling, EVV, billing, compliance, caregiver notes…”
+
+Left inside input: search icon
+
+Right side: filter dropdown (Category, Department, “Only Recommended”)
+
+Below search: quick filter chips (clickable toggles):
+
+Scheduling
+
+EVV / Time Clock
+
+Billing
+
+Compliance
+
+Care Notes
+
+Recruiting
+
+3) “Recommended for Homecare Ops” (Top Agents Row)
+
+A horizontal row/grid of 4 featured agent cards (most important).
+Each card includes:
+
+Agent icon
+
+Agent name
+
+1-line purpose
+
+Badges (e.g., “Recommended”, “HIPAA-ready”, “Saves 2h/week”)
+
+Buttons:
+
+“Run”
+
+“Details”
+
+Featured agents (use these exact 4):
+
+Smart Scheduler Agent
+Auto-suggest schedules, fill open shifts, warn about conflicts, caregiver availability.
+
+EVV & Timesheet Validator
+Flags missing clock-in/out, GPS mismatch, overtime risks, incomplete notes.
+
+Billing & Invoice Builder
+Generates invoices from approved shifts, flags missing mileage/expenses, tracks unpaid.
+
+Compliance & Documentation Checker
+Detects missing forms (TB, background check, I-9), expiring docs, required signatures.
+
+Only a Few Sections (Most Important)
+
+Do NOT include dozens of sections. Include only these 3 sections below, each with a small heading + short description + a grid of cards.
+
+Section A: “Scheduling & Staffing”
+
+3 cards:
+
+Shift Fill Assistant (finds best caregiver for an open shift)
+
+Conflict Detector (overlaps, travel-time issues, max-hours)
+
+Client Preference Matcher (language, gender preference, skills, distance)
+
+Section B: “Care Delivery & Notes”
+
+3 cards:
+
+Care Note Summarizer (turns daily notes into a clean summary)
+
+Incident Report Drafter (guided incident form + suggested wording)
+
+Family Update Composer (professional update message based on notes)
+
+Section C: “Recruiting & Onboarding”
+
+3 cards:
+
+Applicant Screener (scores candidates, flags missing info)
+
+Onboarding Checklist Agent (steps + documents + reminders)
+
+Training Reminder Agent (CPR renewal, annual training due dates)
+
+Agent Details Modal (Required)
+
+Clicking “Details” opens a modal with:
+
+Agent name + description
+
+“What it can do” bullet list
+
+Inputs (mock form fields) like:
+
+client name
+
+caregiver name
+
+date range
+
+shift ID
+
+Buttons:
+
+“Run Agent” (shows toast “Agent started”)
+
+“Save as Workflow” (placeholder)
+
+Include a small “Security” area:
+
+“HIPAA considerations: avoid PHI in free text fields”
+
+“Audit logging enabled” (mock)
+
+Data + State (Mock but structured)
+
+Use a typed array agents[] with fields:
+
+id, name, category, description, badges[], icon, recommended(boolean)
+
+Search input filters cards by name/description/category
+
+Chips toggle categories
+
+Filter dropdown can filter recommended-only
+
+Include loading skeleton state for initial render (fake 600ms delay)
+
+UX Requirements
+
+Desktop: 3–4 column grid; Mobile: 1 column
+
+Smooth hover effects: lift card slightly + subtle border highlight
+
+Empty state: “No agents found. Try ‘billing’ or ‘EVV’.”
+
+Accessibility: buttons have labels, modal focus trap, keyboard close (Esc)
+
+Visual Style Guidance
+
+Background: very light neutral
+
+Cards: white with subtle gradient header bar (small)
+
+Use icons relevant to each agent:
+
+Calendar, Clock, FileText, ShieldCheck, Users, MessageSquare, AlertTriangle, Briefcase, CheckCircle
+
+Keep it “enterprise-clean” and not playful.

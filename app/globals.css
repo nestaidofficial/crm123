@@ -1,0 +1,184 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Nessa CRM — black & white only */
+    --background: #FAF9F6;
+    --foreground: #000000;
+    --card: #FFFFFF;
+    --card-foreground: #000000;
+    --popover: #FFFFFF;
+    --popover-foreground: #000000;
+    --primary: #000000;
+    --primary-foreground: #FFFFFF;
+    --secondary: #FFFFFF;
+    --secondary-foreground: #000000;
+    --muted: #F5F5F5;
+    --muted-foreground: #525252;
+    --accent: #F5F5F5;
+    --accent-foreground: #000000;
+    --destructive: #000000;
+    --destructive-foreground: #FFFFFF;
+    --border: #E5E5E5;
+    --input: #F5F5F5;
+    --ring: rgba(0, 0, 0, 0.2);
+    --radius: 16px;
+    --shadow-card: 0 10px 30px rgba(0, 0, 0, 0.08);
+    --shadow-card-hover: 0 14px 38px rgba(0, 0, 0, 0.12);
+    --canvas: #FAF9F6;
+    --canvas-soft: #F5F5F5;
+    --neutral-0: #FFFFFF;
+    --neutral-50: #F5F5F5;
+    --neutral-200: #E5E5E5;
+    --neutral-500: #525252;
+    --neutral-900: #000000;
+  }
+}
+
+@layer base {
+  * {
+    border-color: var(--border);
+  }
+  body {
+    background-color: #FAF9F6;
+    color: var(--foreground);
+    font-family: var(--font-sans), Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+    background-attachment: fixed;
+  }
+}
+
+@layer utilities {
+  .font-sans {
+    font-family: var(--font-sans), sans-serif;
+  }
+  
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+
+  .shadow-card {
+    box-shadow: var(--shadow-card);
+  }
+  .shadow-card-hover {
+    box-shadow: var(--shadow-card-hover);
+  }
+  .focus-ring-primary {
+    box-shadow: 0 0 0 4px rgba(0, 0, 0, 0.2);
+  }
+}
+
+@layer base {
+  /* Browser reset - remove all default spacing for flush-to-viewport layout */
+  html {
+    margin: 0;
+    padding: 0;
+    font-size: 14px;
+    height: 100%;
+    overflow: hidden;
+  }
+
+  body {
+    margin: 0;
+    padding: 0;
+    font-size: 14px;
+    line-height: 1.5;
+    font-weight: 500;
+    height: 100%;
+    overflow: hidden;
+  }
+}
+
+@layer utilities {
+  @keyframes bounce-slow {
+    0%, 100% {
+      transform: translateY(0);
+    }
+    50% {
+      transform: translateY(-10px);
+    }
+  }
+
+  @keyframes pulse-glow {
+    0%, 100% {
+      opacity: 1;
+      box-shadow: 0 0 20px rgba(0, 0, 0, 0.15);
+    }
+    50% {
+      opacity: 0.8;
+      box-shadow: 0 0 30px rgba(0, 0, 0, 0.25);
+    }
+  }
+
+  @keyframes slide-in-right {
+    from {
+      opacity: 0;
+      transform: translateX(20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateX(0);
+    }
+  }
+
+  @keyframes fade-in {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+
+  @keyframes spin-slow {
+    from {
+      transform: rotate(0deg);
+    }
+    to {
+      transform: rotate(360deg);
+    }
+  }
+
+  @keyframes spin-slow-reverse {
+    from {
+      transform: rotate(360deg);
+    }
+    to {
+      transform: rotate(0deg);
+    }
+  }
+
+  .animate-bounce-slow {
+    animation: bounce-slow 3s ease-in-out infinite;
+  }
+
+  .animate-pulse-glow {
+    animation: pulse-glow 2s ease-in-out infinite;
+  }
+
+  .animate-slide-in-right {
+    animation: slide-in-right 0.3s ease-out;
+  }
+
+  .animate-fade-in {
+    animation: fade-in 0.5s ease-in;
+  }
+
+  .animate-spin-slow {
+    animation: spin-slow 8s linear infinite;
+  }
+
+  .animate-spin-slow-reverse {
+    animation: spin-slow-reverse 8s linear infinite;
+  }
+
+  .scale-102 {
+    transform: scale(1.02);
+  }
+}

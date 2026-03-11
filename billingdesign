@@ -1,0 +1,280 @@
+Billing Module Front-End (Points)
+1) Page Header
+
+Title: Billing
+
+Subtitle: Manage invoices, payments, and billing reports
+
+Right actions:
+
+Primary: Generate Invoices (bulk from approved shifts)
+
+Secondary: New Manual Invoice
+
+Optional: Record Payment, Export
+
+2) Top Filters Row (sticky)
+
+Date range picker: Today / Week / Month / Custom
+
+Status: Draft / Sent / Unpaid / Partially Paid / Paid / Overdue / Voided
+
+Client dropdown (searchable)
+
+Service type dropdown (optional)
+
+Search input: invoice # / client name
+
+3) KPI Cards Row (4 cards)
+
+Ready to Invoice
+
+$ total + count of approved-unbilled shifts
+
+Click → opens bulk invoice wizard (pre-filtered)
+
+Outstanding
+
+$ unpaid balance + invoice count
+
+Click → invoices filtered to unpaid
+
+Overdue
+
+$ overdue + invoice count
+
+Click → overdue list
+
+Paid This Month
+
+$ paid + invoice count
+
+Click → paid list
+
+4) Work Queue Tabs (ops-driven)
+
+Tabs above table:
+
+Ready to Invoice (X)
+
+Draft (X)
+
+Unpaid (X)
+
+Overdue (X)
+
+All Invoices
+
+Each tab loads the same invoice table with different filters.
+
+5) Main Invoice Table (core UI)
+
+Columns
+
+Invoice #
+
+Client
+
+Billing period
+
+Total
+
+Paid
+
+Balance
+
+Status (chip)
+
+Due date
+
+Flags (icons)
+
+Actions (⋯)
+
+Row flags (icons)
+
+⚠ Missing rate
+
+📍 Mileage included
+
+✏️ Manual edits
+
+🧾 Expense included
+
+🔁 Recurring invoice (optional)
+
+Bulk select actions
+
+Mark as Sent
+
+Download PDFs
+
+Export CSV
+
+Apply late fee (optional)
+
+Void (admin only)
+
+6) Invoice Detail (Right Drawer on row click)
+
+Top summary
+
+Invoice # + Client + Status chip
+
+Total, Paid, Balance, Due date
+
+Buttons: Send, Download PDF, Record Payment, Add Adjustment, Void
+
+Tabs inside drawer
+
+Line Items
+
+service lines grouped by service type or by visit
+
+mileage line
+
+expense lines
+
+totals section
+
+Source Shifts
+
+list of included approved shifts (read-only)
+
+links back to shift detail
+
+Payments
+
+list of payments applied + remaining balance
+
+Audit Log
+
+created/sent/edited/voided by who + timestamps
+
+7) Generate Invoices (Bulk Wizard UI)
+
+Modal / stepper:
+
+Step 1: Select scope
+
+Billing period
+
+Clients (All / selected)
+
+Toggles: include mileage, include expenses
+
+Step 2: Validation
+
+Missing rate
+
+Missing service type
+
+Unapproved shifts (excluded)
+
+Mileage missing distance/rate
+Buttons: Fix now (opens list) / Continue & flag
+
+Step 3: Preview
+
+Client-wise totals
+
+line-item grouping toggle
+Button: Generate Draft Invoices
+
+8) Payments Screen (simple ledger)
+
+Top actions
+
+Record Payment
+
+Filters: date range, client, method
+
+Table
+
+Payment ID
+
+Date
+
+Client
+
+Amount
+
+Method
+
+Reference #
+
+Applied invoices
+
+Unapplied amount (if any)
+
+Record payment modal
+
+Client
+
+Amount
+
+Method + reference
+
+Auto-apply to oldest unpaid invoices (default)
+
+Manual allocation option
+
+9) Client Billing Profile (inside Patient/Client page)
+
+Add a Billing tab in client profile:
+
+Current balance + overdue badge
+
+Rate plan (service type pricing)
+
+Invoice history table
+
+Payment history
+
+Notes (billing notes only)
+
+10) Pricing & Rates Screen
+
+Rate hierarchy
+
+Agency default rates
+
+Client-specific overrides
+
+UI
+
+Client selector (Agency Default / specific client)
+
+Rate table:
+
+Service type
+
+Unit (hour/visit)
+
+Rate
+
+OT rate (optional)
+
+Effective date (optional)
+
+11) Billing Settings (admin)
+
+Invoice numbering format (INV-000123)
+
+Default due terms (Net 7/14/30)
+
+Late fee rules (optional)
+
+Mileage rate (global + client override)
+
+Expense categories (parking, supplies, etc.)
+
+Permissions: who can edit/void/approve
+
+12) Empty States (must)
+
+If no invoices: show CTA Generate invoices from approved shifts
+
+If “Ready to invoice” is 0: show “No approved shifts pending billing”
+
+If validation errors exist: show “Fix rates/service types to invoice”

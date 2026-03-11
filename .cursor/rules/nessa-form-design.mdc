@@ -1,0 +1,92 @@
+---
+description: Form design system – typography, alignment, box styles, and tags matching inline-task-composer
+globs: **/*form*.tsx,**/*composer*.tsx,**/components/**/*.tsx
+alwaysApply: false
+---
+
+# Nessa CRM Form Design System
+
+Use this design language for all forms. Reference: `components/tasks/inline-task-composer.tsx`.
+
+## Card / container
+
+- **Card**: `border border-neutral-200/60 shadow-md rounded-[20px] overflow-hidden bg-white`
+- **Width**: `max-w-[340px] min-w-[320px]` (or `w-full` with those constraints)
+- **Header**: `flex items-center justify-between px-5 py-3`
+- **Title**: `text-[15px] font-semibold text-neutral-900`
+- **Content**: `px-5 pb-5 pt-2 space-y-4`
+
+## Field rows (each form row)
+
+- **Row wrapper**: `flex items-center gap-3 pb-3 border-b border-neutral-100`
+- **Leading icon**: `h-5 w-5 text-neutral-400 shrink-0` (use `h-4 w-4` for smaller icons e.g. ChevronDown)
+- **Optional trailing icon**: same size, same color
+
+## Inputs (no visible border, no focus ring)
+
+- **Title / primary text input**: Use a native `<input type="text">` (not the shadcn Input component) so the caret renders at full height from the first blink. Classes: `flex-1 border-0 bg-transparent p-0 py-1 text-[15px] text-neutral-900 placeholder:text-neutral-400 focus:outline-none focus:ring-0`
+- **Text Input (secondary)**: `h-auto min-h-0 border-0 p-0 bg-transparent shadow-none focus-visible:ring-0 text-[14px] placeholder:text-neutral-400`
+- **No focus outline**: add `outline-none focus:outline-none focus:ring-0 focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0` on any input/textarea that must have zero focus ring
+- **Placeholder**: `placeholder:text-neutral-400`; use `placeholder:italic` for search-style fields
+- **Date input**: same base + `text-neutral-700 [color-scheme:light]`
+
+## Select
+
+- **SelectTrigger**: `h-auto min-h-0 border-0 p-0 bg-transparent shadow-none focus:ring-0 focus:ring-offset-0 text-[14px] flex-1 [&>span]:text-neutral-400 data-[placeholder]:text-neutral-400`
+- **Chevron (right)**: `h-4 w-4 text-neutral-400 shrink-0`
+
+## Textarea
+
+- **Textarea**: `flex-1 min-h-0 border-0 rounded-none p-0 bg-transparent shadow-none outline-none focus:outline-none focus:ring-0 focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0 text-[14px] resize-none placeholder:text-neutral-400`
+
+## Tags / chips (e.g. assignees, multi-select)
+
+- **Chip**: `inline-flex items-center gap-1.5 rounded-full bg-neutral-100/80 border border-neutral-200/60 pl-1 pr-2 py-0.5 text-[13px] text-neutral-700`
+- **Avatar in chip**: `h-5 w-5 shrink-0`; fallback `text-[9px] bg-neutral-400 text-white`
+- **Remove (X)**: `hover:bg-neutral-200 rounded-full p-0.5 text-neutral-400 hover:text-neutral-700`, icon `h-3.5 w-3.5`
+
+## Dropdown / popover list
+
+- **Container**: `rounded-xl border border-neutral-200/80 bg-white shadow-lg max-h-[200px] overflow-y-auto py-1.5`
+- **Item**: `w-full flex items-center gap-2.5 px-3 py-2 hover:bg-neutral-50 text-left text-[13px] text-neutral-800`
+- **Empty state**: `text-[12px] text-neutral-500 italic py-2`
+
+## Validation / errors
+
+- **Error text**: `text-[11px] text-red-500` with `ml-8` or `pl-8` and `-mt-1` or `-mt-2` so it aligns under the field content (not under the icon)
+
+## Optional / “Add more” link
+
+- **Toggle button**: `flex items-center gap-3 w-full text-left text-[13px] text-neutral-500 hover:text-neutral-700 py-2`
+
+## Primary submit button
+
+- **Button**: `w-full h-11 bg-neutral-900 hover:bg-neutral-800 text-white text-[14px] font-semibold rounded-[14px] mt-1`
+
+## Close / icon buttons (header)
+
+- **Ghost icon button**: `h-8 w-8 rounded-full hover:bg-neutral-100 text-neutral-500`, icon `h-[18px] w-[18px]`
+
+## Helper / hints (keyboard shortcuts)
+
+- **Row**: `flex items-center justify-between pt-2 text-[11px] text-neutral-400`
+- **Keycap**: `inline-flex items-center px-2 py-0.5 rounded-md bg-neutral-100/80 text-neutral-500 font-mono text-[10px]`
+
+## Typography summary
+
+| Use            | Class |
+|----------------|--------|
+| Section title  | `text-[15px] font-semibold text-neutral-900` |
+| Field value    | `text-[15px]` (title), `text-[14px]` (others) |
+| Placeholder    | `placeholder:text-neutral-400` |
+| Chips / tags   | `text-[13px] text-neutral-700` |
+| Dropdown item  | `text-[13px] text-neutral-800` |
+| Optional link  | `text-[13px] text-neutral-500` |
+| Error          | `text-[11px] text-red-500` |
+| Helper / kbd   | `text-[11px] text-neutral-400`, keycap `text-[10px]` |
+
+## Alignment
+
+- One icon left, control in middle (`flex-1 min-w-0`), optional icon right.
+- Errors and dropdowns: offset by icon column (e.g. `ml-8` or `pl-8`).
+- Keep `gap-3` between icon and content; `space-y-4` between major sections; `pb-3 border-b border-neutral-100` between rows.
