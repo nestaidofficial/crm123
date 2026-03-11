@@ -95,7 +95,7 @@ export function TaskDashboard() {
     if (kanbanColumns.length > 0 || columns.length === 0) {
       setColumns(kanbanColumns);
     }
-  }, [kanbanTasks, kanbanColumns]);
+  }, [kanbanTasks, kanbanColumns, tasks.length, columns.length]);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {

@@ -112,7 +112,7 @@ export function useKanbanData(): UseKanbanDataReturn {
       .eq("user_id", userId)
       .eq("agency_id", agencyId)
       .maybeSingle()
-      .then(({ data }) => {
+      .then(({ data }: any) => {
         if (data) {
           const initials = `${data.first_name.charAt(0)}${data.last_name.charAt(0)}`.toUpperCase();
           setCurrentEmployee({
@@ -237,7 +237,7 @@ export function useKanbanData(): UseKanbanDataReturn {
       throw new Error(err.error || "Failed to reorder tasks");
     }
     // Realtime will trigger fetchData; no explicit call needed
-  }, [fetchData]);
+  }, []);
 
   // ─── Column mutations ──────────────────────────────────────────────────────
 

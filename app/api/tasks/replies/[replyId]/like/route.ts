@@ -15,14 +15,14 @@ function errorResponse(message: string, status: number): NextResponse {
  */
 export async function POST(
   request: NextRequest,
-  { params }: { params: { replyId: string } }
+  { params }: { params: Promise<{ replyId: string }> }
 ) {
   try {
     const auth = await requireAuth(request);
     if (isAuthError(auth)) return auth;
     const { supabase, agencyId, userId } = auth;
 
-    const replyId = params.replyId;
+    const { replyId } = await params;
 
     // Verify reply exists and belongs to agency
     const { data: reply, error: replyError } = await supabase

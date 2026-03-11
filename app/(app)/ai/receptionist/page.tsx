@@ -169,9 +169,9 @@ function CallLogTable({ records }: CallLogTableProps) {
     visible: (i: number) => ({
       opacity: 1,
       y: 0,
-      transition: { delay: i * 0.04, duration: 0.25, ease: "easeOut" },
+      transition: { delay: i * 0.04, duration: 0.25, ease: "easeOut" as const },
     }),
-  };
+  } as const;
 
   const thClass = "py-2 px-3 text-left";
   const thLabel = "text-[10px] font-medium text-neutral-500 uppercase tracking-wide";

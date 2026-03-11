@@ -26,14 +26,14 @@ function errorResponse(message: string, status: number, details?: unknown): Next
  */
 export async function POST(
   request: NextRequest,
-  { params }: { params: { commentId: string } }
+  { params }: { params: Promise<{ commentId: string }> }
 ) {
   try {
     const auth = await requireAuth(request);
     if (isAuthError(auth)) return auth;
     const { supabase, agencyId, userId } = auth;
 
-    const commentId = params.commentId;
+    const { commentId } = await params;
 
     let body: unknown;
     try {

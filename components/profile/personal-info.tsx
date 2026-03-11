@@ -27,7 +27,7 @@ interface PersonalInfoProps {
     email: string;
   };
   userId?: string;
-  uploadFn: (file: File, entityId: string) => Promise<string>;
+  uploadFn: (file: File, entityId?: string) => Promise<string>;
   onFormChange: (field: string, value: string) => void;
   onAvatarChange: (url: string) => void;
 }

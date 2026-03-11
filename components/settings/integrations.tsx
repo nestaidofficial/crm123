@@ -87,6 +87,7 @@ const Integrations = () => {
               className="flex w-fit items-center gap-3 rounded-md border p-2"
             >
               {integration.iconUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
                 <img
                   src={integration.iconUrl}
                   alt={integration.name}
@@ -100,7 +101,7 @@ const Integrations = () => {
 
               <p className="text-sm font-medium">{integration.name}</p>
               <Button
-                size="xs"
+                size="sm"
                 variant="ghost"
                 className="text-primary bg-primary/10 rounded-md transition-colors focus:ring-2 focus:ring-offset-2 focus:outline-none"
                 aria-label={`Remove ${integration.name}`}

@@ -346,7 +346,7 @@ export function ReceptionistSetup({ onComplete }: ReceptionistSetupProps) {
                 <div className="space-y-2">
                   <Label htmlFor="servicesSummary">Services Summary</Label>
                   <p className="text-xs text-muted-foreground">
-                    Describe your agency's services. This will be included in the AI's knowledge. Leave blank to use a default home care services description.
+                    Describe your agency&apos;s services. This will be included in the AI&apos;s knowledge. Leave blank to use a default home care services description.
                   </p>
                   <Controller
                     name="phoneSetup.servicesSummary"
@@ -466,7 +466,7 @@ export function ReceptionistSetup({ onComplete }: ReceptionistSetupProps) {
                           Hours Summary Label
                         </Label>
                         <p className="text-xs text-muted-foreground">
-                          Optional short label, e.g. "Mon-Fri 9-5, Closed weekends"
+                          Optional short label, e.g. &quot;Mon-Fri 9-5, Closed weekends&quot;
                         </p>
                         <Controller
                           name="phoneSetup.businessHoursLabel"

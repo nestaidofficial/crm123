@@ -64,7 +64,7 @@ export function useSupabaseRealtime<T = any>(
         supabase.removeChannel(subscription);
       }
     };
-  }, [table, event, filter]);
+  }, [table, event, filter, callback]);
 
   return channel;
 }
@@ -140,5 +140,5 @@ export function useSupabaseRealtimeMulti<T = any>(
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [table, filter]);
+  }, [table, filter, callbacks]);
 }

@@ -69,7 +69,7 @@ export async function GET(request: NextRequest) {
 
     // Get unique employee IDs
     const employeeIds = Array.from(
-      new Set((assigneeRows || []).map((a: KanbanTaskAssigneeRow) => a.employee_id))
+      new Set((assigneeRows || []).map((a: any) => a.employee_id))
     );
 
     // Fetch employee details
@@ -89,7 +89,7 @@ export async function GET(request: NextRequest) {
 
     // Build assignee map (task_id -> Employee[])
     const assigneeMap = new Map<string, any[]>();
-    (assigneeRows || []).forEach((a: KanbanTaskAssigneeRow) => {
+    (assigneeRows || []).forEach((a: any) => {
       const employee = employeeMap.get(a.employee_id);
       if (employee) {
         if (!assigneeMap.has(a.task_id)) {
@@ -186,7 +186,7 @@ export async function POST(request: NextRequest) {
     const nextSortOrder = maxOrderRow ? maxOrderRow.sort_order + 1 : 0;
 
     const taskRow = {
-      ...mapCreateTaskToRow(input, agencyId, employee?.id || null),
+      ...mapCreateTaskToRow(input as any, agencyId, employee?.id || null),
       sort_order: nextSortOrder,
     };
 

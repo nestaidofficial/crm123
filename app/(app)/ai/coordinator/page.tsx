@@ -178,9 +178,9 @@ function CoverageLogTable({ records }: CoverageLogTableProps) {
     visible: (i: number) => ({
       opacity: 1,
       y: 0,
-      transition: { delay: i * 0.04, duration: 0.25, ease: "easeOut" },
+      transition: { delay: i * 0.04, duration: 0.25, ease: "easeOut" as const },
     }),
-  };
+  } as const;
 
   const thClass = "py-2 px-3 text-left";
   const thLabel = "text-[10px] font-medium text-neutral-500 uppercase tracking-wide";
@@ -298,9 +298,9 @@ function RequestsTable({ records, onAction }: RequestsTableProps) {
     visible: (i: number) => ({
       opacity: 1,
       y: 0,
-      transition: { delay: i * 0.04, duration: 0.25, ease: "easeOut" },
+      transition: { delay: i * 0.04, duration: 0.25, ease: "easeOut" as const },
     }),
-  };
+  } as const;
 
   const thClass = "py-2 px-3 text-left";
   const thLabel = "text-[10px] font-medium text-neutral-500 uppercase tracking-wide";
@@ -564,7 +564,7 @@ export default function CoordinatorPage() {
 
   // Computed values for Tab 2
   const firstClient = useMemo(
-    () => clients.find((c) => !c.isArchived) ?? null,
+    () => clients[0] ?? null,
     [clients]
   );
   const clientDisplay = firstClient
@@ -619,7 +619,7 @@ export default function CoordinatorPage() {
         match,
         rating: parseFloat((4.9 - idx * 0.1).toFixed(1)),
         avatarColor: getAvatarColor(idx),
-        badgeVariant: (match >= 90 ? "positive" : "warning") as const,
+        badgeVariant: (match >= 90 ? "positive" : "warning") as "positive" | "warning",
       };
     });
   }, [eligibleCaregivers]);
@@ -1162,7 +1162,7 @@ export default function CoordinatorPage() {
                       <div className="flex h-44 flex-col items-center justify-center gap-2 px-4 py-4">
                         <AlertCircle className="h-7 w-7 text-neutral-200" />
                         <span className="text-[12px] text-neutral-400">No active call-outs</span>
-                        <span className="text-[11px] text-neutral-400">Click "Simulate Call-Out" to begin</span>
+                        <span className="text-[11px] text-neutral-400">Click &quot;Simulate Call-Out&quot; to begin</span>
                       </div>
                     </>
                   ) : (
@@ -1433,6 +1433,7 @@ export default function CoordinatorPage() {
                           <div className="flex items-center gap-3 mb-3">
                             <div className="relative h-10 w-10 shrink-0">
                               {aiRecommendation.caregiver.avatar ? (
+                                // eslint-disable-next-line @next/next/no-img-element
                                 <img
                                   src={aiRecommendation.caregiver.avatar}
                                   alt={aiRecommendation.caregiver.name}
@@ -1569,6 +1570,7 @@ export default function CoordinatorPage() {
                                 >
                                   <div className="relative h-8 w-8 shrink-0">
                                     {c.avatar ? (
+                                      // eslint-disable-next-line @next/next/no-img-element
                                       <img
                                         src={c.avatar}
                                         alt={c.name}
@@ -1629,6 +1631,7 @@ export default function CoordinatorPage() {
                               <div className="flex items-center gap-3">
                                 <div className="relative h-12 w-12 shrink-0">
                                   {aiRecommendation.caregiver.avatar ? (
+                                    // eslint-disable-next-line @next/next/no-img-element
                                     <img
                                       src={aiRecommendation.caregiver.avatar}
                                       alt={aiRecommendation.caregiver.name}

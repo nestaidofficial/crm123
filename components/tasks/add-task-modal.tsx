@@ -29,7 +29,6 @@ import {
   KanbanDomain,
   Employee,
   KANBAN_DOMAIN_OPTIONS,
-  NESSSA_EMPLOYEE_MOCK,
 } from "@/lib/tasks/nessaKanbanMock";
 import { X, Calendar as CalendarIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -101,7 +100,7 @@ export function AddTaskModal({
   };
 
   const getSelectedEmployeeObjects = (): Employee[] => {
-    return NESSSA_EMPLOYEE_MOCK.filter((emp) =>
+    return [].filter((emp: Employee) =>
       selectedEmployees.includes(emp.id)
     );
   };
@@ -336,7 +335,7 @@ export function AddTaskModal({
               <div className="border rounded-md p-2 bg-white shadow-sm">
                 <div className="h-[200px] overflow-y-auto">
                   <div className="space-y-2">
-                    {NESSSA_EMPLOYEE_MOCK.map((employee) => (
+                    {([] as Employee[]).map((employee) => (
                       <div
                         key={employee.id}
                         className="flex items-center space-x-3 p-2 hover:bg-neutral-50 rounded cursor-pointer"

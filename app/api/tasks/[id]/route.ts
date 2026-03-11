@@ -26,14 +26,14 @@ function errorResponse(message: string, status: number, details?: unknown): Next
  */
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const auth = await requireAuth(request);
     if (isAuthError(auth)) return auth;
     const { supabase, agencyId } = auth;
 
-    const taskId = params.id;
+    const { id: taskId } = await params;
 
     let body: unknown;
     try {
@@ -75,7 +75,7 @@ export async function PATCH(
       }
     }
 
-    const updateRow = mapUpdateTaskToRow(input);
+    const updateRow = mapUpdateTaskToRow(input as any);
 
     // Update task
     const { data: updatedTask, error: updateError } = await supabase
@@ -120,14 +120,14 @@ export async function PATCH(
  */
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const auth = await requireAuth(request);
     if (isAuthError(auth)) return auth;
     const { supabase, agencyId } = auth;
 
-    const taskId = params.id;
+    const { id: taskId } = await params;
 
     // Verify task exists and belongs to agency
     const { data: existingTask, error: fetchError } = await supabase
