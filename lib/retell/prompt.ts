@@ -48,9 +48,9 @@ interface RetellState {
 export interface RetellLlmConfig {
   begin_message: string;
   general_prompt: string;
-  general_tools: RetellTool[];
+  general_tools: any[];
   starting_state: string;
-  states: RetellState[];
+  states: any[];
   model: string;
   model_temperature: number;
 }
