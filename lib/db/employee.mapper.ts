@@ -30,6 +30,7 @@ export interface EmployeeRow {
   registered_at: string;
   last_active_at: string | null;
   created_at: string;
+  short_id: string | null;
   updated_at: string;
 }
 
@@ -92,12 +93,13 @@ export interface EmployeeApiShape {
   isArchived: boolean;
   registeredAt: string;
   lastActiveAt: string | null;
+  shortId: string | null;
   createdAt: string;
   updatedAt: string;
 }
 
-export function mapCreateEmployeeToRow(input: CreateEmployeeInput): Omit<EmployeeRow, "id" | "created_at" | "updated_at" | "is_archived" | "registered_at" | "last_active_at"> {
-  const row: Omit<EmployeeRow, "id" | "created_at" | "updated_at" | "is_archived" | "registered_at" | "last_active_at"> = {
+export function mapCreateEmployeeToRow(input: CreateEmployeeInput): Omit<EmployeeRow, "id" | "short_id" | "created_at" | "updated_at" | "is_archived" | "registered_at" | "last_active_at"> {
+  const row: Omit<EmployeeRow, "id" | "short_id" | "created_at" | "updated_at" | "is_archived" | "registered_at" | "last_active_at"> = {
     first_name: input.firstName,
     last_name: input.lastName,
     middle_name: input.middleName && input.middleName.trim() !== "" ? input.middleName : null,
@@ -138,7 +140,7 @@ export function mapCreateEmployeeToRow(input: CreateEmployeeInput): Omit<Employe
 }
 
 /** Build row payload for update from API shape (e.g. after PATCH merge). */
-export function mapApiShapeToRow(api: EmployeeApiShape): Omit<EmployeeRow, "id" | "created_at"> {
+export function mapApiShapeToRow(api: EmployeeApiShape): Omit<EmployeeRow, "id" | "short_id" | "created_at"> {
   return {
     first_name: api.firstName,
     last_name: api.lastName,
@@ -223,6 +225,7 @@ export function mapRowToEmployee(row: EmployeeRow): EmployeeApiShape {
     isArchived: row.is_archived,
     registeredAt: row.registered_at,
     lastActiveAt: row.last_active_at,
+    shortId: row.short_id,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };

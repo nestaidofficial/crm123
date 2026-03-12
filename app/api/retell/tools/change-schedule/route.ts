@@ -87,23 +87,43 @@ export async function POST(request: NextRequest) {
       coordConfig.auto_fill_shifts && coordConfig.assignment_mode === "auto-assign";
 
     // ── Find caregiver ───────────────────────────────────────────
-    let employeeQuery = supabase
-      .from("employees")
-      .select("id, first_name, last_name")
-      .eq("agency_id", agencyId)
-      .eq("status", "active")
-      .eq("is_archived", false)
-      .ilike("first_name", caregiverFirstName);
+    const caregiverShortId: string = (toolInput.caregiver_short_id ?? "").trim();
+    let employees: { id: string; first_name: string; last_name: string; short_id?: string }[] | null = null;
 
-    if (caregiverLastName) {
-      employeeQuery = employeeQuery.ilike("last_name", caregiverLastName);
+    // Try exact short_id lookup first
+    if (caregiverShortId) {
+      const { data } = await supabase
+        .from("employees")
+        .select("id, first_name, last_name, short_id")
+        .eq("agency_id", agencyId)
+        .eq("short_id", caregiverShortId)
+        .eq("status", "active")
+        .eq("is_archived", false)
+        .maybeSingle();
+      if (data) employees = [data];
     }
 
-    let { data: employees, error: empError } = await employeeQuery;
+    // Fall through to name-based lookup if no short_id match
+    if (!employees || employees.length === 0) {
+      let employeeQuery = supabase
+        .from("employees")
+        .select("id, first_name, last_name, short_id")
+        .eq("agency_id", agencyId)
+        .eq("status", "active")
+        .eq("is_archived", false)
+        .ilike("first_name", caregiverFirstName);
 
-    if (empError) {
-      console.error("[change-schedule] Employee lookup error:", empError);
-      return NextResponse.json({ result: "error", message: "Error looking up caregiver" });
+      if (caregiverLastName) {
+        employeeQuery = employeeQuery.ilike("last_name", caregiverLastName);
+      }
+
+      const { data, error: empError } = await employeeQuery;
+      employees = data;
+
+      if (empError) {
+        console.error("[change-schedule] Employee lookup error:", empError);
+        return NextResponse.json({ result: "error", message: "Error looking up caregiver" });
+      }
     }
 
     // Full-name fallback: if no results and first_name contains spaces,

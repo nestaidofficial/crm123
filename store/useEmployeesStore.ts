@@ -30,6 +30,7 @@ interface EmployeesState {
 function apiShapeToEmployee(api: EmployeeApiShape): Employee {
   return {
     id: api.id,
+    shortId: api.shortId ?? undefined,
     firstName: api.firstName,
     lastName: api.lastName,
     email: api.email,

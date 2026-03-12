@@ -93,6 +93,42 @@ export async function POST(request: NextRequest) {
             recording_url: callData.recording_url,
           },
         });
+
+        // ── Handle outbound coverage call results ──────────────────
+        const endMetadata = callData.metadata as Record<string, string> | undefined;
+        if (endMetadata?.outreach_attempt_id) {
+          const disconnectReason = callData.disconnect_reason ?? "";
+          let attemptStatus: string;
+          if (["voicemail_reached", "voicemail"].includes(disconnectReason)) {
+            attemptStatus = "voicemail";
+          } else if (["no_answer", "dial_no_answer"].includes(disconnectReason)) {
+            attemptStatus = "no_answer";
+          } else if (["error", "dial_failed"].includes(disconnectReason)) {
+            attemptStatus = "failed";
+          } else {
+            // Call completed normally — keep status as-is until call_analyzed
+            attemptStatus = "in_progress";
+          }
+
+          if (attemptStatus !== "in_progress") {
+            await serviceClient
+              .from("outreach_attempts")
+              .update({
+                status: attemptStatus,
+                call_duration_ms: callData.duration_ms ?? null,
+                responded_at: new Date().toISOString(),
+              })
+              .eq("id", endMetadata.outreach_attempt_id);
+          } else {
+            await serviceClient
+              .from("outreach_attempts")
+              .update({
+                call_duration_ms: callData.duration_ms ?? null,
+              })
+              .eq("id", endMetadata.outreach_attempt_id);
+          }
+        }
+
         break;
       }
 
@@ -119,9 +155,43 @@ export async function POST(request: NextRequest) {
           },
         });
 
-        // ── Create coverage_requests row for non-cancel calls ──────
-        await createRequestFromAnalysis(serviceClient, agencyId, callData.call_id, analysis);
+        // ── Handle outbound coverage call analysis ──────────────
+        const analyzedMetadata = callData.metadata as Record<string, string> | undefined;
+        if (analyzedMetadata?.outreach_attempt_id) {
+          await handleOutboundCallAnalysis(serviceClient, analyzedMetadata.outreach_attempt_id, analysis);
+        } else {
+          // ── Create coverage_requests row for inbound calls ──────
+          await createRequestFromAnalysis(serviceClient, agencyId, callData.call_id, analysis);
+        }
 
+        break;
+      }
+
+      case "chat_analyzed": {
+        console.log(`[Retell] Chat analyzed: ${callData.chat_id}`);
+
+        const chatAnalysis = callData.chat_analysis ?? {};
+        const chatMetadata = callData.metadata as Record<string, string> | undefined;
+
+        if (chatMetadata?.outreach_attempt_id) {
+          await handleOutboundCallAnalysis(serviceClient, chatMetadata.outreach_attempt_id, chatAnalysis);
+        }
+
+        const chatAgencyId = chatMetadata?.agency_id ?? "00000000-0000-0000-0000-000000000000";
+        await serviceClient.from("retell_sync_log").insert({
+          agency_id: chatAgencyId,
+          action: "webhook.chat_analyzed",
+          status: "success",
+          request_payload: {
+            chat_id: callData.chat_id,
+            agent_id: callData.agent_id,
+          },
+          response_payload: {
+            summary: chatAnalysis.chat_summary,
+            sentiment: chatAnalysis.user_sentiment,
+            custom_analysis: chatAnalysis.custom_analysis_data,
+          },
+        });
         break;
       }
 
@@ -215,6 +285,51 @@ async function createRequestFromAnalysis(
 }
 
 /**
+ * Handle post-call analysis for outbound coverage calls.
+ * Updates the outreach_attempts row with the caregiver's response.
+ */
+async function handleOutboundCallAnalysis(
+  supabase: SupabaseClient,
+  attemptId: string,
+  analysis: Record<string, unknown>
+) {
+  try {
+    const custom = (analysis.custom_analysis_data ?? {}) as Record<string, unknown>;
+    const response = (custom.response as string) ?? "";
+    const caregiverMessage = (custom.caregiver_message as string) ?? "";
+    const summary = (custom.summary as string) ?? (analysis.summary as string) ?? "";
+
+    let newStatus: string;
+    if (response === "accepted") {
+      newStatus = "accepted";
+    } else if (response === "declined") {
+      newStatus = "declined";
+    } else if (response === "voicemail") {
+      newStatus = "voicemail";
+    } else if (response === "no_answer") {
+      newStatus = "no_answer";
+    } else {
+      // Keep current status — don't overwrite if call_ended already set it
+      newStatus = "no_answer";
+    }
+
+    await supabase
+      .from("outreach_attempts")
+      .update({
+        status: newStatus,
+        response_message: caregiverMessage || null,
+        response_notes: summary || null,
+        responded_at: new Date().toISOString(),
+      })
+      .eq("id", attemptId);
+
+    console.log(`[Retell] Outbound call analyzed: attempt ${attemptId} → ${newStatus}`);
+  } catch (err) {
+    console.error("[Retell] Failed to handle outbound call analysis:", err);
+  }
+}
+
+/**
  * Look up which agency owns a given Retell agent_id.
  * Returns the agency_id or a placeholder if not found.
  */
@@ -234,12 +349,30 @@ async function resolveAgencyId(
 
   if (recepData?.agency_id) return recepData.agency_id;
 
-  // Fall back to coordinator_config
+  // Fall back to coordinator_config (inbound agent)
   const { data: coordData } = await supabase
     .from("coordinator_config")
     .select("agency_id")
     .eq("retell_agent_id", retellAgentId)
     .maybeSingle();
 
-  return coordData?.agency_id ?? fallback;
+  if (coordData?.agency_id) return coordData.agency_id;
+
+  // Fall back to coordinator_config (outbound voice agent)
+  const { data: outboundData } = await supabase
+    .from("coordinator_config")
+    .select("agency_id")
+    .eq("retell_outbound_agent_id", retellAgentId)
+    .maybeSingle();
+
+  if (outboundData?.agency_id) return outboundData.agency_id;
+
+  // Fall back to coordinator_config (outbound chat agent)
+  const { data: chatData } = await supabase
+    .from("coordinator_config")
+    .select("agency_id")
+    .eq("retell_outbound_chat_agent_id", retellAgentId)
+    .maybeSingle();
+
+  return chatData?.agency_id ?? fallback;
 }

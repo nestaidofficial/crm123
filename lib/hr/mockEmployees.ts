@@ -16,6 +16,7 @@ export interface Verification {
 
 export interface Employee {
   id: string;
+  shortId?: string;
   firstName: string;
   lastName: string;
   middleName?: string;

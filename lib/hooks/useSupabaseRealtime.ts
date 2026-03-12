@@ -1,11 +1,10 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef } from "react";
 import { getSupabaseBrowserClient } from "@/lib/supabase";
-import type { RealtimeChannel } from "@supabase/supabase-js";
 
 /**
  * Hook for subscribing to Supabase real-time changes on a table.
  * Automatically handles subscription lifecycle and cleanup.
- * 
+ *
  * @param table - The table name to subscribe to
  * @param event - The event type ('INSERT', 'UPDATE', 'DELETE', or '*' for all)
  * @param callback - Function to call when changes occur
@@ -21,52 +20,39 @@ export function useSupabaseRealtime<T = any>(
   }) => void,
   filter?: string
 ) {
-  const [channel, setChannel] = useState<RealtimeChannel | null>(null);
+  // Store latest callback in a ref so the useEffect doesn't depend on it
+  const callbackRef = useRef(callback);
+  callbackRef.current = callback;
 
   useEffect(() => {
     const supabase = getSupabaseBrowserClient();
-    
-    // Create channel with unique name
-    const channelName = `${table}_${event}_${Date.now()}`;
+
+    // Deterministic channel name — no Date.now()
+    const channelName = `${table}_${event}${filter ? `_${filter}` : ""}`;
     let subscription = supabase.channel(channelName);
 
     // Build the subscription
-    if (filter) {
-      subscription = subscription.on(
-        "postgres_changes" as any,
-        {
-          event,
-          schema: "public",
-          table,
-          filter,
-        },
-        callback as any
-      );
-    } else {
-      subscription = subscription.on(
-        "postgres_changes" as any,
-        {
-          event,
-          schema: "public",
-          table,
-        },
-        callback as any
-      );
-    }
+    const opts: Record<string, any> = {
+      event,
+      schema: "public",
+      table,
+      ...(filter && { filter }),
+    };
+
+    subscription = subscription.on(
+      "postgres_changes" as any,
+      opts,
+      (payload: any) => callbackRef.current(payload)
+    );
 
     // Subscribe
     subscription.subscribe();
-    setChannel(subscription);
 
     // Cleanup on unmount
     return () => {
-      if (subscription) {
-        supabase.removeChannel(subscription);
-      }
+      supabase.removeChannel(subscription);
     };
-  }, [table, event, filter, callback]);
-
-  return channel;
+  }, [table, event, filter]);
 }
 
 /**
@@ -82,63 +68,61 @@ export function useSupabaseRealtimeMulti<T = any>(
   },
   filter?: string
 ) {
+  // Store latest callbacks in a ref so the useEffect doesn't depend on them
+  const callbacksRef = useRef(callbacks);
+  callbacksRef.current = callbacks;
+
   useEffect(() => {
     const supabase = getSupabaseBrowserClient();
-    const channelName = `${table}_multi_${Date.now()}`;
+    const channelName = `${table}_multi${filter ? `_${filter}` : ""}`;
     let channel = supabase.channel(channelName);
 
     // Subscribe to INSERT
-    if (callbacks.onInsert) {
-      channel = channel.on(
-        "postgres_changes" as any,
-        {
-          event: "INSERT",
-          schema: "public",
-          table,
-          ...(filter && { filter }),
-        },
-        (payload: any) => {
-          callbacks.onInsert?.(payload.new as T);
-        }
-      );
-    }
+    channel = channel.on(
+      "postgres_changes" as any,
+      {
+        event: "INSERT",
+        schema: "public",
+        table,
+        ...(filter && { filter }),
+      },
+      (payload: any) => {
+        callbacksRef.current.onInsert?.(payload.new as T);
+      }
+    );
 
     // Subscribe to UPDATE
-    if (callbacks.onUpdate) {
-      channel = channel.on(
-        "postgres_changes" as any,
-        {
-          event: "UPDATE",
-          schema: "public",
-          table,
-          ...(filter && { filter }),
-        },
-        (payload: any) => {
-          callbacks.onUpdate?.(payload.new as T, payload.old as T);
-        }
-      );
-    }
+    channel = channel.on(
+      "postgres_changes" as any,
+      {
+        event: "UPDATE",
+        schema: "public",
+        table,
+        ...(filter && { filter }),
+      },
+      (payload: any) => {
+        callbacksRef.current.onUpdate?.(payload.new as T, payload.old as T);
+      }
+    );
 
     // Subscribe to DELETE
-    if (callbacks.onDelete) {
-      channel = channel.on(
-        "postgres_changes" as any,
-        {
-          event: "DELETE",
-          schema: "public",
-          table,
-          ...(filter && { filter }),
-        },
-        (payload: any) => {
-          callbacks.onDelete?.(payload.old as T);
-        }
-      );
-    }
+    channel = channel.on(
+      "postgres_changes" as any,
+      {
+        event: "DELETE",
+        schema: "public",
+        table,
+        ...(filter && { filter }),
+      },
+      (payload: any) => {
+        callbacksRef.current.onDelete?.(payload.old as T);
+      }
+    );
 
     channel.subscribe();
 
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [table, filter, callbacks]);
+  }, [table, filter]);
 }

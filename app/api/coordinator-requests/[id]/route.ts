@@ -117,6 +117,137 @@ export async function PATCH(
         }
       }
     }
+
+    // Handle unlinked callout requests (from webhook post-call analysis)
+    // These have caregiver_name + shift_date but no event_id in payload
+    if (
+      !warning &&
+      !payload?.event_id &&
+      reqRow.request_type === "callout" &&
+      reqRow.caregiver_name &&
+      reqRow.shift_date
+    ) {
+      const nameParts = (reqRow.caregiver_name as string).trim().split(/\s+/);
+      const firstName = nameParts[0];
+      const lastName = nameParts.length > 1 ? nameParts.slice(1).join(" ") : null;
+
+      // Find matching active caregiver
+      let empQuery = supabase
+        .from("employees")
+        .select("id, first_name, last_name")
+        .eq("agency_id", agencyId)
+        .eq("status", "active")
+        .eq("is_archived", false)
+        .ilike("first_name", firstName);
+
+      if (lastName) {
+        empQuery = empQuery.ilike("last_name", lastName);
+      }
+
+      const { data: employees, error: empErr } = await empQuery;
+
+      if (empErr) {
+        console.error("[coordinator-requests] Employee lookup error:", empErr);
+        warning = "Failed to look up caregiver. Please cancel the shift manually.";
+      } else if (!employees || employees.length === 0) {
+        warning = `No active caregiver found matching "${reqRow.caregiver_name}". Request approved but no schedule change made.`;
+      } else if (employees.length > 1) {
+        warning = `Multiple caregivers match "${reqRow.caregiver_name}". Please cancel the correct shift manually.`;
+      } else {
+        const caregiver = employees[0];
+
+        // Find the shift on that date
+        const shiftDate = reqRow.shift_date as string; // YYYY-MM-DD
+        const dayStart = `${shiftDate}T00:00:00`;
+        const dayEnd = `${shiftDate}T23:59:59`;
+
+        const { data: shifts, error: shiftErr } = await supabase
+          .from("schedule_events")
+          .select("id, status, start_at")
+          .eq("agency_id", agencyId)
+          .eq("employee_id", caregiver.id)
+          .gte("start_at", dayStart)
+          .lte("start_at", dayEnd)
+          .in("status", ["scheduled", "confirmed"]);
+
+        if (shiftErr) {
+          console.error("[coordinator-requests] Shift lookup error:", shiftErr);
+          warning = "Failed to look up shift. Please cancel it manually.";
+        } else if (!shifts || shifts.length === 0) {
+          warning = `No scheduled shift found for ${reqRow.caregiver_name} on ${shiftDate}. Request approved but no schedule change made.`;
+        } else {
+          // Cancel all matching shifts on that date (usually just one)
+          for (const shift of shifts) {
+            const { error: cancelErr } = await supabase
+              .from("schedule_events")
+              .update({ status: "cancelled" })
+              .eq("id", shift.id);
+
+            if (cancelErr) {
+              console.error("[coordinator-requests] Cancel shift error:", cancelErr);
+              warning = "Failed to cancel the shift. Please cancel it manually.";
+              break;
+            }
+
+            // Audit log
+            await supabase.from("schedule_audit_log").insert({
+              event_id: shift.id,
+              agency_id: agencyId,
+              action: "cancelled",
+              field_changed: "status",
+              old_value: JSON.stringify({ status: shift.status }),
+              new_value: JSON.stringify({ status: "cancelled" }),
+              actor_id: userId,
+            });
+          }
+        }
+      }
+    }
+
+    if (payload?.action === "reschedule" && payload?.event_id) {
+      const eventId = payload.event_id as string;
+      const newStart = payload.new_start as string | undefined;
+      const newEnd = payload.new_end as string | undefined;
+
+      if (!newStart || !newEnd) {
+        warning = "Reschedule approved but missing new start/end times in payload. Please update the shift manually.";
+      } else {
+        // Fetch the schedule event
+        const { data: evt, error: evtErr } = await supabase
+          .from("schedule_events")
+          .select("id, status, start_at, end_at")
+          .eq("id", eventId)
+          .single();
+
+        if (evtErr || !evt) {
+          warning = "Shift not found — it may have been deleted. Request approved but no schedule change made.";
+        } else if (evt.status !== "scheduled" && evt.status !== "confirmed") {
+          warning = `Shift status is "${evt.status}" — cannot reschedule. Request approved but no schedule change made.`;
+        } else {
+          // Reschedule the shift
+          const { error: rescheduleErr } = await supabase
+            .from("schedule_events")
+            .update({ start_at: newStart, end_at: newEnd })
+            .eq("id", eventId);
+
+          if (rescheduleErr) {
+            console.error("[coordinator-requests] Reschedule event error:", rescheduleErr);
+            warning = "Failed to reschedule the shift. Please update it manually.";
+          } else {
+            // Audit log
+            await supabase.from("schedule_audit_log").insert({
+              event_id: eventId,
+              agency_id: agencyId,
+              action: "time_changed",
+              field_changed: "start_at,end_at",
+              old_value: JSON.stringify({ start_at: evt.start_at, end_at: evt.end_at }),
+              new_value: JSON.stringify({ start_at: newStart, end_at: newEnd }),
+              actor_id: userId,
+            });
+          }
+        }
+      }
+    }
   }
 
   const result = {

@@ -13,7 +13,7 @@ const securityHeaders = [
       "style-src 'self' 'unsafe-inline' https:",
       "img-src 'self' data: https: blob:",
       "font-src 'self' data: https:",
-      "connect-src 'self' https:",
+      "connect-src 'self' https: wss://*.supabase.co",
       "frame-ancestors 'self'",
     ].join('; '),
   },

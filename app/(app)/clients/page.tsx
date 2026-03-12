@@ -47,10 +47,12 @@ export default function ClientsPage() {
       const name = `${p.firstName} ${p.lastName}`.toLowerCase();
       const email = (p.email ?? "").toLowerCase();
       const phone = p.phone.toLowerCase();
+      const shortId = (p.shortId ?? "").toLowerCase();
       return (
         name.includes(q) ||
         email.includes(q) ||
         phone.includes(q) ||
+        shortId.includes(q) ||
         p.address.city.toLowerCase().includes(q) ||
         p.address.state.toLowerCase().includes(q)
       );
@@ -169,8 +171,11 @@ export default function ClientsPage() {
                               </AvatarFallback>
                             </Avatar>
                             <div>
-                              <div className="text-[14px] font-medium text-neutral-900">
+                              <div className="text-[14px] font-medium text-neutral-900 flex items-center gap-1.5">
                                 {p.firstName} {p.lastName}
+                                {p.shortId && (
+                                  <span className="text-[10px] font-mono text-neutral-400">{p.shortId}</span>
+                                )}
                               </div>
                               <div className="text-[12px] text-neutral-500">
                                 DOB {p.dob}

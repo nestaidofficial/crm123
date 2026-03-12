@@ -68,11 +68,13 @@ export default function HRPage() {
       const email = emp.email.toLowerCase();
       const phone = emp.phone.toLowerCase();
       const role = getRoleLabel(emp.role).toLowerCase();
+      const shortId = (emp.shortId ?? "").toLowerCase();
       return (
         name.includes(q) ||
         email.includes(q) ||
         phone.includes(q) ||
         role.includes(q) ||
+        shortId.includes(q) ||
         emp.department.toLowerCase().includes(q)
       );
     });
@@ -199,8 +201,11 @@ export default function HRPage() {
                               </AvatarFallback>
                             </Avatar>
                             <div>
-                              <div className="text-[13px] font-medium text-neutral-900">
+                              <div className="text-[13px] font-medium text-neutral-900 flex items-center gap-1.5">
                                 {emp.firstName} {emp.lastName}
+                                {emp.shortId && (
+                                  <span className="text-[10px] font-mono text-neutral-400">{emp.shortId}</span>
+                                )}
                               </div>
                               <div className="text-[11px] text-neutral-500">
                                 {getRoleLabel(emp.role)}

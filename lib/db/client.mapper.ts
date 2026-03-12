@@ -17,6 +17,7 @@ export interface ClientRow {
   primary_contact: PrimaryContactRow;
   emergency_contact: EmergencyContactRow;
   care_plan: NonMedicalCarePlanRow | MedicalCarePlanRow;
+  short_id: string | null;
   is_archived: boolean;
   created_at: string;
   updated_at: string;
@@ -86,6 +87,7 @@ export interface ClientApiShape {
     relation?: string;
   };
   carePlan: NonMedicalCarePlanApi | MedicalCarePlanApi;
+  shortId: string | null;
   isArchived: boolean;
   createdAt: string;
   updatedAt: string;
@@ -107,8 +109,8 @@ type MedicalCarePlanApi = {
   skilledServices: string[];
 };
 
-export function mapCreateClientToRow(input: CreateClientInput): Omit<ClientRow, "id" | "created_at" | "updated_at" | "is_archived"> {
-  const row: Omit<ClientRow, "id" | "created_at" | "updated_at" | "is_archived"> = {
+export function mapCreateClientToRow(input: CreateClientInput): Omit<ClientRow, "id" | "short_id" | "created_at" | "updated_at" | "is_archived"> {
+  const row: Omit<ClientRow, "id" | "short_id" | "created_at" | "updated_at" | "is_archived"> = {
     care_type: input.careType,
     first_name: input.firstName,
     last_name: input.lastName,
@@ -152,7 +154,7 @@ export function mapCreateClientToRow(input: CreateClientInput): Omit<ClientRow, 
 }
 
 /** Build row payload for update from API shape (e.g. after PATCH merge). */
-export function mapApiShapeToRow(api: ClientApiShape): Omit<ClientRow, "id" | "created_at"> {
+export function mapApiShapeToRow(api: ClientApiShape): Omit<ClientRow, "id" | "short_id" | "created_at"> {
   const isNonMedical = api.careType === "non_medical";
   const carePlan = api.carePlan as NonMedicalCarePlanApi | MedicalCarePlanApi;
   return {
@@ -247,6 +249,7 @@ export function mapRowToClient(row: ClientRow): ClientApiShape {
           medications: (carePlan as MedicalCarePlanRow).medications,
           skilledServices: (carePlan as MedicalCarePlanRow).skilled_services,
         },
+    shortId: row.short_id,
     isArchived: row.is_archived,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
@@ -257,6 +260,7 @@ export function mapRowToClient(row: ClientRow): ClientApiShape {
 export function apiShapeToSavedClient(api: ClientApiShape): SavedClient {
   const base = {
     id: api.id,
+    shortId: api.shortId ?? undefined,
     careType: api.careType,
     firstName: api.firstName,
     lastName: api.lastName,

@@ -107,6 +107,11 @@ You handle inbound calls for the coverage/scheduling line. Your goals are:
 4. Escalate sensitive issues (medical emergencies, abuse, complaints) to a human
 5. Summarize and wrap up
 
+## CURRENT DATE
+Today is ${new Date().toISOString().split('T')[0]} (${new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}).
+Use this to resolve relative dates: "tomorrow" = next day, "next Monday" = the coming Monday, etc.
+When passing dates to tools, always convert to YYYY-MM-DD format.
+
 ## CRITICAL RULES
 1. NEVER invent information. Never quote specific caregiver assignments, client details, or schedules — say "I'll make sure the scheduler gets this information right away."
 2. EMERGENCY PROTOCOL: If a caller mentions a medical emergency, safety threat, or life-threatening situation — immediately say "If this is a life-threatening emergency, please call 911 right now" and then transfer to human.
@@ -159,6 +164,11 @@ You handle inbound calls for the coverage/scheduling line. Your goals are:
       parameters: {
         type: "object",
         properties: {
+          caregiver_short_id: {
+            type: "string",
+            description:
+              "Employee ID (e.g. E-1001). If provided, used for exact lookup instead of name.",
+          },
           caregiver_first_name: {
             type: "string",
             description: "The caregiver's first name",
@@ -195,6 +205,11 @@ You handle inbound calls for the coverage/scheduling line. Your goals are:
       parameters: {
         type: "object",
         properties: {
+          caregiver_short_id: {
+            type: "string",
+            description:
+              "Employee ID (e.g. E-1001). If provided, used for exact lookup instead of name.",
+          },
           caregiver_first_name: {
             type: "string",
             description: "The caregiver's first name",
@@ -295,7 +310,7 @@ You handle inbound calls for the coverage/scheduling line. Your goals are:
   // ── STATE: Call-Out Intake ─────────────────────────────────────
   const intakeFields = [
     { flag: row.collect_caregiver_name, label: "Caregiver name", prompt: "Can I get your full name?" },
-    { flag: row.collect_caregiver_id, label: "Caregiver ID", prompt: "Do you have your caregiver ID or employee number?" },
+    { flag: row.collect_caregiver_id, label: "Employee ID", prompt: "Do you have your employee ID? It starts with E dash, like E-1001." },
     { flag: row.collect_client_name, label: "Client name", prompt: "Which client's shift are you calling about?" },
     { flag: row.collect_shift_date, label: "Shift date", prompt: "What date is the shift?" },
     { flag: row.collect_shift_time, label: "Shift time", prompt: "What time does the shift start?" },
@@ -326,6 +341,7 @@ You handle inbound calls for the coverage/scheduling line. Your goals are:
     calloutIntakeLines.push(
       ``,
       `Once you have the caregiver's name and shift date, use the cancel_shift tool to cancel the shift immediately.`,
+      `If the caller provides their employee ID (e.g. E-1001), pass it as caregiver_short_id for an exact lookup.`,
       `Pass the caregiver's first name, last name (if provided), shift date (YYYY-MM-DD), and shift time (HH:MM 24h, if known).`,
       ``,
       `After the tool returns:`,
@@ -370,9 +386,10 @@ You handle inbound calls for the coverage/scheduling line. Your goals are:
     scheduleChangeLines.push(
       ``,
       `Once you have the caregiver's name, current shift date, and the new date/time:`,
+      `If the caller provides their employee ID (e.g. E-1001), pass it as caregiver_short_id for an exact lookup.`,
       `- If they want to CANCEL the shift → use the cancel_shift tool`,
       `- If they want to RESCHEDULE (change date or time) → use the change_schedule tool`,
-      `  Pass: caregiver_first_name, caregiver_last_name (if known), current_shift_date (YYYY-MM-DD), current_shift_time (HH:MM 24h, if known), new_date (YYYY-MM-DD), new_start_time (HH:MM 24h), new_end_time (HH:MM 24h, optional), reason`,
+      `  Pass: caregiver_short_id (if known), caregiver_first_name, caregiver_last_name (if known), current_shift_date (YYYY-MM-DD), current_shift_time (HH:MM 24h, if known), new_date (YYYY-MM-DD), new_start_time (HH:MM 24h), new_end_time (HH:MM 24h, optional), reason`,
       ``,
       `After the tool returns:`,
       `- If result is "success": relay the confirmation message to the caller exactly as returned.`,
