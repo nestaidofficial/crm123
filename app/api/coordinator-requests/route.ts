@@ -35,8 +35,8 @@ export async function GET(request: NextRequest) {
   const { data, error } = await query;
 
   if (error) {
-    console.error("[coordinator-requests] GET error:", error);
-    return NextResponse.json({ error: "Failed to fetch requests" }, { status: 500 });
+    console.error("[coordinator-requests] GET error:", JSON.stringify(error));
+    return NextResponse.json({ error: "Failed to fetch requests", details: error.message, code: error.code }, { status: 500 });
   }
 
   const mapped = (data ?? []).map((r) => ({
