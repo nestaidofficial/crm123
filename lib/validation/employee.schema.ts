@@ -67,7 +67,7 @@ export const CreateEmployeeSchema = z.object({
   phone: phoneSchema,
   dob: dobSchema,
   ssn: z.string().optional().or(z.literal("")), // Allow empty string
-  gender: genderEnum.optional(),
+  gender: genderEnum.optional().or(z.literal("")),
   avatarUrl: z.union([z.string().url(), z.literal("")]).optional(),
   role: roleEnum,
   status: statusEnum.default("active"),
@@ -97,7 +97,7 @@ export const UpdateEmployeeSchema = z
     phone: phoneSchema.optional(),
     dob: dobSchema,
     ssn: z.string().optional().or(z.literal("")),
-    gender: genderEnum.optional(),
+    gender: genderEnum.optional().or(z.literal("")),
     avatarUrl: z.union([z.string().url(), z.literal("")]).optional(),
     role: roleEnum.optional(),
     status: statusEnum.optional(),

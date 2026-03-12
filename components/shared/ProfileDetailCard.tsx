@@ -47,6 +47,7 @@ interface ProfileDetailCardProps {
   avatarUrl?: string;
   avatarFallback: string;
   name: string;
+  shortId?: string;
   subtitle?: string; // e.g., "Sales Manager • Tickmark Inc."
   badges?: Array<{ label: string; variant?: "default" | "secondary" | "outline" }>;
   statusPill?: {
@@ -85,6 +86,7 @@ export function ProfileDetailCard({
   avatarUrl,
   avatarFallback,
   name,
+  shortId,
   subtitle,
   badges = [],
   statusPill,
@@ -121,9 +123,16 @@ export function ProfileDetailCard({
           <div className="flex-1 min-w-0">
             <div className="flex items-start justify-between gap-2">
               <div className="flex-1 min-w-0">
-                <h1 className="text-2xl font-bold text-neutral-900 mb-1 truncate">
-                  {name}
-                </h1>
+                <div className="flex items-center gap-2 mb-1">
+                  <h1 className="text-2xl font-bold text-neutral-900 truncate">
+                    {name}
+                  </h1>
+                  {shortId && (
+                    <span className="text-[10px] font-mono text-neutral-400 shrink-0">
+                      {shortId}
+                    </span>
+                  )}
+                </div>
                 {subtitle && (
                   <p className="text-body-m text-neutral-500 mb-2">{subtitle}</p>
                 )}

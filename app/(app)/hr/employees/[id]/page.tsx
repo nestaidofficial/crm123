@@ -364,6 +364,7 @@ export default function EmployeeProfilePage() {
             avatarUrl={employee.avatar}
             avatarFallback={getInitials(employee.firstName, employee.lastName)}
             name={`${employee.firstName} ${employee.lastName}`}
+            shortId={employee.shortId ?? undefined}
             subtitle={`${getRoleLabel(employee.role)} • ${employee.department}`}
             badges={[
               {

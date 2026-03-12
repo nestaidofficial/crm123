@@ -577,6 +577,7 @@ export default function ClientProfilePage() {
             avatarUrl={client.avatar}
             avatarFallback={getInitials(client.firstName, client.lastName)}
             name={`${client.firstName} ${client.lastName}`}
+            shortId={client.shortId ?? undefined}
             subtitle={`${client.address.city}, ${client.address.state}`}
             badges={[
               {

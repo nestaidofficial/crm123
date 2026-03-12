@@ -102,7 +102,7 @@ const defaultEmployeeValues: Partial<CreateEmployeeInput> = {
   phone: "",
   dob: "",
   ssn: "",
-  gender: undefined,
+  gender: "",
   avatarUrl: "",
   role: "caregiver",
   status: "active",
