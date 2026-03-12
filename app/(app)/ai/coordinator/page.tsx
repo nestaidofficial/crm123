@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { motion } from "framer-motion";
 import { useRouter, useSearchParams } from "next/navigation";
 import { cn } from "@/lib/utils";
@@ -54,6 +54,7 @@ import { useScheduleStore } from "@/store/useScheduleStore";
 import { useClientsStore } from "@/store/useClientsStore";
 import { toast } from "sonner";
 import { apiFetch } from "@/lib/api-fetch";
+import { useSupabaseRealtimeMulti } from "@/lib/hooks/useSupabaseRealtime";
 
 // ─────────────────────────────────────────
 // Types & Mock Data for Coverage Log
@@ -521,26 +522,59 @@ export default function CoordinatorPage() {
     }
   }, [searchParams]);
 
+  // Fetch coordinator requests (extracted for re-use by realtime)
+  const fetchCoordRequests = useCallback(async () => {
+    setReqLoading(true);
+    try {
+      const res = await apiFetch("/api/coordinator-requests");
+      if (res.ok) {
+        const { data } = await res.json();
+        setCoordRequests(data);
+      }
+    } finally {
+      setReqLoading(false);
+    }
+  }, []);
+
   // Hydrate stores on mount + fetch coordinator requests
   useEffect(() => {
     hydrateEmployees();
     hydrateClients();
     hydrateSchedule({ startDate: "2026-03-07", endDate: "2026-03-07" });
-
-    async function fetchCoordRequests() {
-      setReqLoading(true);
-      try {
-        const res = await apiFetch("/api/coordinator-requests");
-        if (res.ok) {
-          const { data } = await res.json();
-          setCoordRequests(data);
-        }
-      } finally {
-        setReqLoading(false);
-      }
-    }
     fetchCoordRequests();
-  }, [hydrateEmployees, hydrateClients, hydrateSchedule]);
+  }, [hydrateEmployees, hydrateClients, hydrateSchedule, fetchCoordRequests]);
+
+  // ── Real-time: refresh Requests tab when coverage_requests changes ──
+  const handleRequestsChange = useCallback(() => {
+    fetchCoordRequests();
+  }, [fetchCoordRequests]);
+
+  const handleScheduleChange = useCallback(() => {
+    clearCache();
+    hydrateSchedule({ startDate: "2026-03-07", endDate: "2026-03-07" });
+  }, [clearCache, hydrateSchedule]);
+
+  useSupabaseRealtimeMulti("coverage_requests", {
+    onInsert: useCallback(() => {
+      handleRequestsChange();
+      toast.info("New coordinator request received");
+    }, [handleRequestsChange]),
+    onUpdate: useCallback(() => {
+      handleRequestsChange();
+    }, [handleRequestsChange]),
+    onDelete: useCallback(() => {
+      handleRequestsChange();
+    }, [handleRequestsChange]),
+  });
+
+  useSupabaseRealtimeMulti("schedule_events", {
+    onInsert: useCallback(() => {
+      handleScheduleChange();
+    }, [handleScheduleChange]),
+    onUpdate: useCallback(() => {
+      handleScheduleChange();
+    }, [handleScheduleChange]),
+  });
 
   async function handleRequestAction(id: string, action: "approve" | "reject") {
     const res = await apiFetch(`/api/coordinator-requests/${id}`, {

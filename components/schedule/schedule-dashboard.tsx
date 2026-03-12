@@ -1,14 +1,45 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import { CalendarView } from "./calendar-view";
 import { CreateShiftDialog } from "./create-shift-dialog";
 import { useScheduleStore } from "@/store/useScheduleStore";
+import { useSupabaseRealtimeMulti } from "@/lib/hooks/useSupabaseRealtime";
 import { toast } from "sonner";
 
 export function ScheduleDashboard() {
   const [isCreateShiftOpen, setIsCreateShiftOpen] = useState(false);
   const createEvent = useScheduleStore((state) => state.createEvent);
+  const clearCache = useScheduleStore((state) => state.clearCache);
+  const hydrate = useScheduleStore((state) => state.hydrate);
+  const currentDateRange = useScheduleStore((state) => state.currentDateRange);
+
+  // ── Real-time: listen for schedule_events changes (from AI coordinator, other users, etc.) ──
+  // Use a ref to avoid subscription churn when currentDateRange changes
+  const dateRangeRef = useRef(currentDateRange);
+  useEffect(() => {
+    dateRangeRef.current = currentDateRange;
+  }, [currentDateRange]);
+
+  const handleRealtimeRefresh = useCallback(() => {
+    clearCache();
+    hydrate(dateRangeRef.current || undefined);
+  }, [clearCache, hydrate]);
+
+  useSupabaseRealtimeMulti("schedule_events", {
+    onInsert: useCallback(() => {
+      handleRealtimeRefresh();
+      toast.info("New shift added to the schedule");
+    }, [handleRealtimeRefresh]),
+    onUpdate: useCallback(() => {
+      handleRealtimeRefresh();
+      toast.info("A shift has been updated");
+    }, [handleRealtimeRefresh]),
+    onDelete: useCallback(() => {
+      handleRealtimeRefresh();
+      toast.info("A shift has been removed");
+    }, [handleRealtimeRefresh]),
+  });
 
   // Note: hydration moved to WeeklyCalendarView to avoid duplicate fetches
 

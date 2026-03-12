@@ -12,6 +12,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { getRetellClient } from "./client";
 import { buildCoordinatorLlmConfig } from "./coordinator-prompt";
 import type { CoordinatorConfigRow } from "@/lib/db/coordinator.mapper";
+import { getAppUrl } from "@/lib/url";
 
 function toE164(raw: string): string {
   const digits = raw.replace(/\D/g, "");
@@ -122,8 +123,9 @@ export async function syncCoordinatorToRetell(
     // ── Step 2: Create or update the Agent ──────────────────────────
     let agentId = row.retell_agent_id;
 
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://localhost:3000";
+    const appUrl = getAppUrl();
     const webhookUrl = `${appUrl}/api/retell/webhook`;
+    console.log(`[Retell Coordinator] Webhook URL being pushed to Retell: ${webhookUrl}`);
 
     if (!agentId) {
       const agent = await retell.agent.create({

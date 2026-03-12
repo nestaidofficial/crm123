@@ -7,6 +7,7 @@
 
 import type { CoordinatorConfigRow } from "@/lib/db/coordinator.mapper";
 import type { RetellLlmConfig } from "./prompt";
+import { getAppUrl } from "@/lib/url";
 
 /** Retell EndCallTool */
 interface EndCallTool {
@@ -143,9 +144,9 @@ You handle inbound calls for the coverage/scheduling line. Your goals are:
     },
   ];
 
-  // ── Conditionally add cancel_shift tool when auto_fill_shifts is ON ──
+  // ── Conditionally add cancel_shift and change_schedule tools when auto_fill_shifts is ON ──
   if (row.auto_fill_shifts) {
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://localhost:3000";
+    const appUrl = getAppUrl();
     generalTools.push({
       type: "custom",
       name: "cancel_shift",
@@ -179,6 +180,61 @@ You handle inbound calls for the coverage/scheduling line. Your goals are:
           },
         },
         required: ["caregiver_first_name", "shift_date"],
+      },
+    });
+
+    generalTools.push({
+      type: "custom",
+      name: "change_schedule",
+      description:
+        "Reschedule a caregiver's shift to a new date and/or time. Use this when a caller requests a schedule change and you have collected the caregiver name, current shift date, and the new date/time. Returns a confirmation message to relay to the caller.",
+      url: `${appUrl}/api/retell/tools/change-schedule`,
+      speak_during_execution: true,
+      execution_message_description:
+        "Let me look up that shift and reschedule it for you.",
+      parameters: {
+        type: "object",
+        properties: {
+          caregiver_first_name: {
+            type: "string",
+            description: "The caregiver's first name",
+          },
+          caregiver_last_name: {
+            type: "string",
+            description:
+              "The caregiver's last name (if provided — ask if multiple matches)",
+          },
+          current_shift_date: {
+            type: "string",
+            description:
+              "The current date of the shift in YYYY-MM-DD format (e.g. 2026-03-11)",
+          },
+          current_shift_time: {
+            type: "string",
+            description:
+              "The current shift start time in HH:MM 24-hour format (e.g. 09:00). Optional but helps disambiguate.",
+          },
+          new_date: {
+            type: "string",
+            description:
+              "The new date for the shift in YYYY-MM-DD format. Required if changing the date.",
+          },
+          new_start_time: {
+            type: "string",
+            description:
+              "The new start time in HH:MM 24-hour format (e.g. 14:00). Required if changing the time.",
+          },
+          new_end_time: {
+            type: "string",
+            description:
+              "The new end time in HH:MM 24-hour format (e.g. 18:00). Optional — if not provided, the original shift duration is preserved.",
+          },
+          reason: {
+            type: "string",
+            description: "Brief reason for the schedule change.",
+          },
+        },
+        required: ["caregiver_first_name", "current_shift_date"],
       },
     });
   }
@@ -297,23 +353,45 @@ You handle inbound calls for the coverage/scheduling line. Your goals are:
   });
 
   // ── STATE: Schedule Change ─────────────────────────────────────
-  states.push({
-    name: "schedule_change",
-    state_prompt: [
-      `The caller has a schedule change or reschedule request.`,
-      `Acknowledge: "I can help with that. Let me get the details."`,
+  const scheduleChangeLines: string[] = [
+    `The caller has a schedule change or reschedule request.`,
+    `Acknowledge: "I can help with that. Let me get the details."`,
+    ``,
+    `Collect:`,
+    `1. Their name (first and last name if possible)`,
+    `2. What change they need (change time, change date, cancel visit, etc.)`,
+    `3. The current shift date (in YYYY-MM-DD format)`,
+    `4. The current shift time (approximate start time, if known)`,
+    `5. The new date and/or time they want`,
+    `6. The reason for the change (optional, don't push if they don't want to share)`,
+  ];
+
+  if (row.auto_fill_shifts) {
+    scheduleChangeLines.push(
       ``,
-      `Collect:`,
-      `1. Their name and role (caregiver or client/family member)`,
-      `2. What change they need (swap shift, change time, cancel visit, etc.)`,
-      `3. The specific date(s) and time(s) affected`,
-      `4. The reason for the change (optional, don't push if they don't want to share)`,
-      `5. Any preferences for the replacement or new time`,
+      `Once you have the caregiver's name, current shift date, and the new date/time:`,
+      `- If they want to CANCEL the shift → use the cancel_shift tool`,
+      `- If they want to RESCHEDULE (change date or time) → use the change_schedule tool`,
+      `  Pass: caregiver_first_name, caregiver_last_name (if known), current_shift_date (YYYY-MM-DD), current_shift_time (HH:MM 24h, if known), new_date (YYYY-MM-DD), new_start_time (HH:MM 24h), new_end_time (HH:MM 24h, optional), reason`,
+      ``,
+      `After the tool returns:`,
+      `- If result is "success": relay the confirmation message to the caller exactly as returned.`,
+      `- If result is "multiple_matches": ask for the last name and call the tool again.`,
+      `- If result is "not_found" or "no_shift": let them know, and say "I've noted the details — the scheduling team will follow up."`,
+      `- If result is "error": say "I wasn't able to update the schedule right now, but I've noted everything. The scheduling team will take care of it."`,
+    );
+  } else {
+    scheduleChangeLines.push(
       ``,
       `Confirm the details and let them know: "I'll get this to the scheduling team right away. They'll follow up with you to confirm."`,
-      ``,
-      `Then go to "wrap_up".`,
-    ].join("\n"),
+    );
+  }
+
+  scheduleChangeLines.push(``, `Then go to "wrap_up".`);
+
+  states.push({
+    name: "schedule_change",
+    state_prompt: scheduleChangeLines.join("\n"),
     edges: [
       { description: "Schedule change details collected", destination_state_name: "wrap_up" },
     ],

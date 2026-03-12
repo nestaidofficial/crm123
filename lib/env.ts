@@ -9,7 +9,7 @@ const envSchema = z.object({
   NEXT_PUBLIC_APP_URL: z
     .string()
     .url("NEXT_PUBLIC_APP_URL must be a valid URL")
-    .default("http://localhost:3000"),
+    .optional(),
 
   // --- Phase 2 (Database) – Supabase ---
   NEXT_PUBLIC_SUPABASE_URL: z.string().url().optional(),

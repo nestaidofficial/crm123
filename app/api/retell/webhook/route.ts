@@ -2,6 +2,16 @@ import { NextRequest, NextResponse } from "next/server";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import Retell from "retell-sdk";
 import { createServerSupabaseServiceClient } from "@/lib/supabase/server";
+import { getAppUrl } from "@/lib/url";
+
+/** GET /api/retell/webhook — diagnostic: verify this endpoint is reachable */
+export async function GET() {
+  return NextResponse.json({
+    status: "ok",
+    appUrl: getAppUrl(),
+    timestamp: new Date().toISOString(),
+  });
+}
 
 /**
  * POST /api/retell/webhook
@@ -160,6 +170,8 @@ async function createRequestFromAnalysis(
     const requestType = CALL_TYPE_TO_REQUEST_TYPE[callType];
     if (!requestType) return;
 
+    console.log(`[Retell] createRequestFromAnalysis: callType=${callType}, requestType=${requestType}, callId=${callId}`);
+
     // Duplicate check — cancel_shift tool may have already created a row
     const { data: existing } = await supabase
       .from("coverage_requests")
@@ -195,7 +207,7 @@ async function createRequestFromAnalysis(
       },
     });
 
-    console.log(`[Retell] Created ${requestType} request from call ${callId}`);
+    console.log(`[Retell] Created ${requestType} request from call ${callId} (row inserted)`);
   } catch (err) {
     // Log but don't fail the webhook — the sync log was already written
     console.error("[Retell] Failed to create request from analysis:", err);
