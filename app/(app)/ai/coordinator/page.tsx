@@ -1153,7 +1153,7 @@ export default function CoordinatorPage() {
                                     <span className="text-[10px] font-medium text-neutral-500 uppercase tracking-wide">Message</span>
                                   </div>
                                   <p className="text-[12px] text-neutral-700 leading-relaxed pl-5">
-                                    "{response.responseDetails.message}"
+                                    &ldquo;{response.responseDetails.message}&rdquo;
                                   </p>
                                 </div>
                               )}
