@@ -48,10 +48,10 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   async initialize() {
     if (get().isInitialized) return;
 
-    const supabase = getSupabaseBrowserClient();
     set({ isLoading: true });
 
     try {
+      const supabase = getSupabaseBrowserClient();
       const { data: { session } } = await supabase.auth.getSession();
       const user = session?.user ?? null;
 

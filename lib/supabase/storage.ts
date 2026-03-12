@@ -1,5 +1,5 @@
 import { createServerSupabaseClient } from "./server";
-import { supabase } from "../supabase";
+import { getSupabaseBrowserClient } from "../supabase";
 
 export const CLIENT_AVATAR_BUCKET = "client_profile_image";
 export const EMPLOYEE_AVATAR_BUCKET = "employee_profile_image";
@@ -22,6 +22,7 @@ export async function uploadClientAvatar(
     ? `${clientId}/${timestamp}_${sanitizedName}`
     : `temp/${timestamp}_${sanitizedName}`;
 
+  const supabase = getSupabaseBrowserClient();
   const { data, error } = await supabase.storage
     .from(CLIENT_AVATAR_BUCKET)
     .upload(filePath, file, {
@@ -57,6 +58,7 @@ export async function deleteClientAvatar(avatarUrl: string): Promise<void> {
   const bucket = match[1];
   const filePath = match[2];
 
+  const supabase = getSupabaseBrowserClient();
   const { error } = await supabase.storage
     .from(bucket)
     .remove([filePath]);
@@ -111,6 +113,7 @@ export async function uploadEmployeeAvatar(
     ? `${employeeId}/${timestamp}_${sanitizedName}`
     : `temp/${timestamp}_${sanitizedName}`;
 
+  const supabase = getSupabaseBrowserClient();
   const { data, error } = await supabase.storage
     .from(EMPLOYEE_AVATAR_BUCKET)
     .upload(filePath, file, {
@@ -145,6 +148,7 @@ export async function deleteEmployeeAvatar(avatarUrl: string): Promise<void> {
 
   const filePath = match[1];
 
+  const supabase = getSupabaseBrowserClient();
   const { error } = await supabase.storage
     .from(EMPLOYEE_AVATAR_BUCKET)
     .remove([filePath]);
@@ -199,6 +203,7 @@ export async function uploadAdminAvatar(
     ? `${userId}/${timestamp}_${sanitizedName}`
     : `temp/${timestamp}_${sanitizedName}`;
 
+  const supabase = getSupabaseBrowserClient();
   const { data, error } = await supabase.storage
     .from(ADMIN_AVATAR_BUCKET)
     .upload(filePath, file, {
@@ -233,6 +238,7 @@ export async function deleteAdminAvatar(avatarUrl: string): Promise<void> {
 
   const filePath = match[1];
 
+  const supabase = getSupabaseBrowserClient();
   const { error } = await supabase.storage
     .from(ADMIN_AVATAR_BUCKET)
     .remove([filePath]);

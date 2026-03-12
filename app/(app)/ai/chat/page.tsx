@@ -1,6 +1,8 @@
 import { Suspense } from "react";
 import { AiChatPage } from "@/components/ai/ai-chat-page";
 
+export const dynamic = "force-dynamic";
+
 function AiChatFallback() {
   return (
     <div className="flex-1 flex items-center justify-center text-neutral-500">
