@@ -55,6 +55,7 @@ import { useClientsStore } from "@/store/useClientsStore";
 import { toast } from "sonner";
 import { apiFetch } from "@/lib/api-fetch";
 import { useSupabaseRealtimeMulti } from "@/lib/hooks/useSupabaseRealtime";
+import { useAuthStore } from "@/store/useAuthStore";
 
 // ─────────────────────────────────────────
 // Types & Mock Data for Coverage Log
@@ -514,6 +515,7 @@ export default function CoordinatorPage() {
   const { employees, hydrate: hydrateEmployees } = useEmployeesStore();
   const { events: scheduleEvents, createEvent, updateEvent, clearCache, hydrate: hydrateSchedule } = useScheduleStore();
   const { clients, hydrate: hydrateClients } = useClientsStore();
+  const agencyId = useAuthStore((s) => s.currentAgencyId);
 
   // Check if setup parameter is in URL
   useEffect(() => {
@@ -524,25 +526,32 @@ export default function CoordinatorPage() {
 
   // Fetch coordinator requests (extracted for re-use by realtime)
   const fetchCoordRequests = useCallback(async () => {
+    if (!agencyId) return; // Wait for auth to be ready
     setReqLoading(true);
     try {
       const res = await apiFetch("/api/coordinator-requests");
       if (res.ok) {
         const { data } = await res.json();
         setCoordRequests(data);
+      } else {
+        console.error("[coordinator] Failed to fetch requests:", res.status, await res.text().catch(() => ""));
       }
     } finally {
       setReqLoading(false);
     }
-  }, []);
+  }, [agencyId]);
 
   // Hydrate stores on mount + fetch coordinator requests
   useEffect(() => {
     hydrateEmployees();
     hydrateClients();
     hydrateSchedule({ startDate: "2026-03-07", endDate: "2026-03-07" });
+  }, [hydrateEmployees, hydrateClients, hydrateSchedule]);
+
+  // Fetch requests once agency ID is available
+  useEffect(() => {
     fetchCoordRequests();
-  }, [hydrateEmployees, hydrateClients, hydrateSchedule, fetchCoordRequests]);
+  }, [fetchCoordRequests]);
 
   // ── Real-time: refresh Requests tab when coverage_requests changes ──
   const handleRequestsChange = useCallback(() => {
