@@ -9,6 +9,7 @@ export const lineRoutingSchema = z.object({
   humanBackupNumber: z.string().min(1, "Backup number is required"),
   introScript: z.string().min(1, "Intro script is required"),
   operatingMode: z.enum(["24/7", "business-hours", "after-hours"]),
+  timezone: z.string().min(1, "Timezone is required"),
 });
 
 // ─────────────────────────────────────────
@@ -114,6 +115,7 @@ export const defaultCoordinatorSetupValues: CoordinatorSetupValues = {
     humanBackupNumber: "",
     introScript: "You've reached the scheduling line for [Agency Name]. How can I help you today?",
     operatingMode: "24/7",
+    timezone: "America/New_York",
   },
   callTypes: {
     alwaysHandled: {
@@ -195,6 +197,7 @@ export const FIELDS_BY_STEP: Record<number, string[]> = {
     "lineRouting.humanBackupNumber",
     "lineRouting.introScript",
     "lineRouting.operatingMode",
+    "lineRouting.timezone",
   ],
   2: [], // No required fields, all toggles
   3: [], // No required fields, all toggles

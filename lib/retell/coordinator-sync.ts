@@ -94,6 +94,18 @@ export async function syncCoordinatorToRetell(
     },
   ];
 
+  // Log prompt content for debugging sync issues
+  const calloutState = llmConfig.states.find((s: any) => s.name === "callout_intake");
+  if (calloutState) {
+    const hasIdRequired = (calloutState as any).state_prompt?.includes("Employee ID is REQUIRED");
+    console.log(`[Retell Coordinator] callout_intake prompt includes "Employee ID is REQUIRED": ${hasIdRequired}`);
+  }
+  const cancelTool = llmConfig.general_tools.find((t: any) => t.name === "cancel_shift");
+  if (cancelTool && "parameters" in cancelTool) {
+    console.log(`[Retell Coordinator] cancel_shift required fields: ${JSON.stringify((cancelTool as any).parameters?.required)}`);
+  }
+  console.log(`[Retell Coordinator] Timezone: ${row.agency_timezone || "not set"}`);
+
   try {
     // ── Step 1: Create or update the LLM ───────────────────────────
     let llmId = row.retell_llm_id;

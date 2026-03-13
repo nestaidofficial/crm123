@@ -133,8 +133,8 @@ When passing dates to tools, always convert to YYYY-MM-DD format.
       type: "custom",
       name: "get_current_date",
       description:
-        "Get today's current date. MUST be called before resolving any relative dates (tomorrow, next Monday, etc.) or passing dates to other tools.",
-      url: `${appUrl}/api/retell/tools/current-date`,
+        "Get today's current date in the agency's local timezone. MUST be called before resolving any relative dates (tomorrow, next Monday, etc.) or passing dates to other tools.",
+      url: `${appUrl}/api/retell/tools/current-date?tz=${encodeURIComponent(row.agency_timezone || "America/New_York")}`,
       speak_during_execution: false,
       execution_message_description: "",
     },

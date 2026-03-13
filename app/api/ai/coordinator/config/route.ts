@@ -42,6 +42,7 @@ function defaultRow(agencyId: string): CoordinatorConfigRow {
     human_backup_number: d.lineRouting.humanBackupNumber,
     intro_script: d.lineRouting.introScript,
     operating_mode: d.lineRouting.operatingMode,
+    agency_timezone: d.lineRouting.timezone,
 
     // Step 2
     handle_caregiver_call_out: d.callTypes.alwaysHandled.caregiverCallOut,

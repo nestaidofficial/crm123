@@ -2,9 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 import Retell from "retell-sdk";
 
 /**
- * POST /api/retell/tools/current-date
+ * POST /api/retell/tools/current-date?tz=America/New_York
  *
- * Retell custom tool endpoint — returns the current date and day of week.
+ * Retell custom tool endpoint — returns the current date and day of week
+ * in the agency's configured timezone.
  * Called by the AI coordinator to resolve relative dates like "tomorrow".
  */
 export async function POST(request: NextRequest) {
@@ -24,14 +25,23 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    const tz = request.nextUrl.searchParams.get("tz") || "America/New_York";
+
     const now = new Date();
-    const dateStr = now.toISOString().split("T")[0]; // YYYY-MM-DD
-    const dayOfWeek = now.toLocaleDateString("en-US", { weekday: "long" });
+    const dateStr = now.toLocaleDateString("en-CA", { timeZone: tz }); // YYYY-MM-DD
+    const dayOfWeek = now.toLocaleDateString("en-US", { weekday: "long", timeZone: tz });
     const formatted = now.toLocaleDateString("en-US", {
       weekday: "long",
       month: "long",
       day: "numeric",
       year: "numeric",
+      timeZone: tz,
+    });
+    const localTime = now.toLocaleTimeString("en-US", {
+      hour: "numeric",
+      minute: "2-digit",
+      hour12: true,
+      timeZone: tz,
     });
 
     return NextResponse.json({
@@ -39,7 +49,9 @@ export async function POST(request: NextRequest) {
       today: dateStr,
       day_of_week: dayOfWeek,
       formatted: formatted,
-      message: `Today is ${formatted} (${dateStr}).`,
+      current_time: localTime,
+      timezone: tz,
+      message: `Today is ${formatted} (${dateStr}). Current time: ${localTime} (${tz}).`,
     });
   } catch (err) {
     console.error("[current-date] Error:", err);

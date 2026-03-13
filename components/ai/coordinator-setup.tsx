@@ -410,6 +410,34 @@ export function CoordinatorSetup({ onComplete, isEditing = false }: CoordinatorS
                     )}
                   />
                 </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="timezone">Agency Timezone</Label>
+                  <Controller
+                    name="lineRouting.timezone"
+                    control={form.control}
+                    render={({ field }) => (
+                      <Select value={field.value} onValueChange={field.onChange}>
+                        <SelectTrigger className="h-14 text-base">
+                          <SelectValue placeholder="Select timezone" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="America/New_York">Eastern (ET)</SelectItem>
+                          <SelectItem value="America/Chicago">Central (CT)</SelectItem>
+                          <SelectItem value="America/Denver">Mountain (MT)</SelectItem>
+                          <SelectItem value="America/Los_Angeles">Pacific (PT)</SelectItem>
+                          <SelectItem value="America/Anchorage">Alaska (AKT)</SelectItem>
+                          <SelectItem value="Pacific/Honolulu">Hawaii (HT)</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    )}
+                  />
+                  {form.formState.errors.lineRouting?.timezone && (
+                    <p className="text-sm text-red-500">
+                      {form.formState.errors.lineRouting.timezone.message}
+                    </p>
+                  )}
+                </div>
               </div>
             )}
 

@@ -19,6 +19,7 @@ export interface CoordinatorConfigRow {
   human_backup_number: string;
   intro_script: string;
   operating_mode: "24/7" | "business-hours" | "after-hours";
+  agency_timezone: string;
 
   // Step 2: Call Types
   handle_caregiver_call_out: boolean;
@@ -114,6 +115,7 @@ export function mapCoordinatorConfigRowToApi(
       humanBackupNumber: row.human_backup_number,
       introScript: row.intro_script,
       operatingMode: row.operating_mode,
+      timezone: row.agency_timezone,
     },
     callTypes: {
       alwaysHandled: {
@@ -214,6 +216,7 @@ export function mapApiToCoordinatorConfigRow(
     human_backup_number: values.lineRouting.humanBackupNumber,
     intro_script: values.lineRouting.introScript,
     operating_mode: values.lineRouting.operatingMode,
+    agency_timezone: values.lineRouting.timezone,
 
     // Step 2
     handle_caregiver_call_out: values.callTypes.alwaysHandled.caregiverCallOut,
