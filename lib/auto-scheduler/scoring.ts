@@ -170,7 +170,7 @@ export async function getAvailableCaregivers(
       phone: emp.phone ?? null,
       matchScore,
       availability: isAvailable ? ("available" as const) : ("unavailable" as const),
-      distance: distanceMiles,
+      distance: distanceMiles ?? undefined,
     };
   }));
 
