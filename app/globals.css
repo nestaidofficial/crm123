@@ -35,6 +35,9 @@
     --neutral-500: #525252;
     --neutral-900: #000000;
   }
+  html {
+    font-family: var(--font-geist), sans-serif;
+  }
 }
 
 @layer base {
@@ -44,21 +47,17 @@
   body {
     background-color: #FAF9F6;
     color: var(--foreground);
-    font-family: var(--font-sans), Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+    font-family: var(--font-geist), system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
     background-attachment: fixed;
   }
 }
 
 @layer utilities {
-  .font-sans {
-    font-family: var(--font-sans), sans-serif;
-  }
-  
   .scrollbar-hide {
     -ms-overflow-style: none;
     scrollbar-width: none;
   }
-  
+
   .scrollbar-hide::-webkit-scrollbar {
     display: none;
   }
@@ -89,9 +88,11 @@
     padding: 0;
     font-size: 14px;
     line-height: 1.5;
-    font-weight: 500;
+    font-weight: 400;
     height: 100%;
     overflow: hidden;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
 }
 

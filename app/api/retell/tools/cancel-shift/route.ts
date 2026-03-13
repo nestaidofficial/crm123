@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import Retell from "retell-sdk";
 import { getRetellClient } from "@/lib/retell/client";
 import { createServerSupabaseServiceClient } from "@/lib/supabase/server";
+import { normalizeShortId } from "@/lib/utils";
 
 /**
  * POST /api/retell/tools/cancel-shift
@@ -78,7 +79,7 @@ export async function POST(request: NextRequest) {
       coordConfig.auto_fill_shifts && coordConfig.assignment_mode === "auto-assign";
 
     // ── Find caregiver ───────────────────────────────────────────
-    const caregiverShortId: string = (toolInput.caregiver_short_id ?? "").trim();
+    const caregiverShortId: string = normalizeShortId(toolInput.caregiver_short_id ?? "") ?? "";
     let employees: { id: string; first_name: string; last_name: string; short_id?: string }[] | null = null;
 
     // Try exact short_id lookup first

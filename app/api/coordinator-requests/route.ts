@@ -22,7 +22,7 @@ export async function GET(request: NextRequest) {
 
   let query = supabase
     .from("coverage_requests")
-    .select("*")
+    .select("*, employees!caregiver_id(short_id)")
     .eq("agency_id", agencyId)
     .not("request_type", "is", null)
     .order("created_at", { ascending: false })
@@ -39,11 +39,12 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Failed to fetch requests", details: error.message, code: error.code }, { status: 500 });
   }
 
-  const mapped = (data ?? []).map((r) => ({
+  const mapped = (data ?? []).map((r: any) => ({
     id: r.id,
     requestType: r.request_type,
     caregiverName: r.caregiver_name ?? null,
     caregiverId: r.caregiver_id ?? null,
+    caregiverShortId: r.employees?.short_id ?? null,
     clientName: r.client_name ?? null,
     eventId: r.event_id ?? null,
     shiftDate: r.shift_date ?? null,

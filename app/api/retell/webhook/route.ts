@@ -3,6 +3,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import Retell from "retell-sdk";
 import { createServerSupabaseServiceClient } from "@/lib/supabase/server";
 import { getAppUrl } from "@/lib/url";
+import { normalizeShortId } from "@/lib/utils";
 
 /** GET /api/retell/webhook — diagnostic: verify this endpoint is reachable */
 export async function GET() {
@@ -260,10 +261,29 @@ async function createRequestFromAnalysis(
     const callSummary = (custom.call_summary as string) || (analysis.summary as string) || null;
     const coverageNeeded = custom.coverage_needed ?? null;
 
+    // Resolve caregiver_id from short ID if available
+    const rawShortId = (custom.caregiver_short_id as string) || null;
+    let caregiverId: string | null = null;
+
+    if (rawShortId) {
+      const normalized = normalizeShortId(rawShortId);
+      if (normalized) {
+        const { data: emp } = await supabase
+          .from("employees")
+          .select("id")
+          .eq("agency_id", agencyId)
+          .eq("short_id", normalized)
+          .eq("is_archived", false)
+          .maybeSingle();
+        if (emp) caregiverId = emp.id;
+      }
+    }
+
     await supabase.from("coverage_requests").insert({
       agency_id: agencyId,
       request_type: requestType,
       caregiver_name: caregiverName,
+      caregiver_id: caregiverId,
       client_name: clientName,
       shift_date: shiftDate,
       reason: callSummary,

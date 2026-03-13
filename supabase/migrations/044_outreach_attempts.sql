@@ -49,18 +49,18 @@ CREATE POLICY outreach_attempts_service_all ON outreach_attempts
 -- Authenticated: read own agency
 CREATE POLICY outreach_attempts_auth_select ON outreach_attempts
   FOR SELECT TO authenticated
-  USING (has_agency_role(agency_id, ARRAY['owner', 'admin', 'scheduler']::app_role[]));
+  USING (has_agency_role(agency_id, ARRAY['owner', 'admin', 'coordinator']::app_role[]));
 
 -- Authenticated: insert for own agency
 CREATE POLICY outreach_attempts_auth_insert ON outreach_attempts
   FOR INSERT TO authenticated
-  WITH CHECK (has_agency_role(agency_id, ARRAY['owner', 'admin', 'scheduler']::app_role[]));
+  WITH CHECK (has_agency_role(agency_id, ARRAY['owner', 'admin', 'coordinator']::app_role[]));
 
 -- Authenticated: update for own agency
 CREATE POLICY outreach_attempts_auth_update ON outreach_attempts
   FOR UPDATE TO authenticated
-  USING (has_agency_role(agency_id, ARRAY['owner', 'admin', 'scheduler']::app_role[]))
-  WITH CHECK (has_agency_role(agency_id, ARRAY['owner', 'admin', 'scheduler']::app_role[]));
+  USING (has_agency_role(agency_id, ARRAY['owner', 'admin', 'coordinator']::app_role[]))
+  WITH CHECK (has_agency_role(agency_id, ARRAY['owner', 'admin', 'coordinator']::app_role[]));
 
 -- ─── Enable realtime ───────────────────────────────────────────
 ALTER PUBLICATION supabase_realtime ADD TABLE outreach_attempts;

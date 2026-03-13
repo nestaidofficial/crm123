@@ -18,7 +18,7 @@ export async function GET(request: NextRequest) {
     .select("*, clients(id, first_name, last_name)")
     .eq("agency_id", agencyId)
     .gt("start_at", new Date().toISOString())
-    .or("and(caregiver_id.is.null,is_open_shift.eq.true),status.eq.cancelled")
+    .or("caregiver_id.is.null,status.eq.cancelled")
     .order("start_at", { ascending: true })
     .limit(50);
 

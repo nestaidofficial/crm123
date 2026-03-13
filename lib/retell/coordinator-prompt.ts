@@ -108,8 +108,7 @@ You handle inbound calls for the coverage/scheduling line. Your goals are:
 5. Summarize and wrap up
 
 ## CURRENT DATE
-Today is ${new Date().toISOString().split('T')[0]} (${new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}).
-Use this to resolve relative dates: "tomorrow" = next day, "next Monday" = the coming Monday, etc.
+IMPORTANT: Before processing any date-related request, you MUST call the get_current_date tool to get today's actual date. Do NOT assume or guess the current date. Use the date returned by the tool to resolve relative dates: "tomorrow" = next day after today, "next Monday" = the coming Monday, etc.
 When passing dates to tools, always convert to YYYY-MM-DD format.
 
 ## CRITICAL RULES
@@ -127,7 +126,18 @@ When passing dates to tools, always convert to YYYY-MM-DD format.
     ? toE164(row.human_backup_number)
     : "+10000000000";
 
+  const appUrl = getAppUrl();
+
   const generalTools: RetellTool[] = [
+    {
+      type: "custom",
+      name: "get_current_date",
+      description:
+        "Get today's current date. MUST be called before resolving any relative dates (tomorrow, next Monday, etc.) or passing dates to other tools.",
+      url: `${appUrl}/api/retell/tools/current-date`,
+      speak_during_execution: false,
+      execution_message_description: "",
+    },
     {
       type: "end_call",
       name: "end_call",
@@ -151,7 +161,6 @@ When passing dates to tools, always convert to YYYY-MM-DD format.
 
   // ── Conditionally add cancel_shift and change_schedule tools when auto_fill_shifts is ON ──
   if (row.auto_fill_shifts) {
-    const appUrl = getAppUrl();
     generalTools.push({
       type: "custom",
       name: "cancel_shift",
@@ -309,8 +318,8 @@ When passing dates to tools, always convert to YYYY-MM-DD format.
 
   // ── STATE: Call-Out Intake ─────────────────────────────────────
   const intakeFields = [
-    { flag: row.collect_caregiver_name, label: "Caregiver name", prompt: "Can I get your full name?" },
-    { flag: row.collect_caregiver_id, label: "Employee ID", prompt: "Do you have your employee ID? It starts with E dash, like E-1001." },
+    { flag: row.collect_caregiver_id, label: "Employee ID", prompt: "Can I get your employee ID? It starts with E dash, like E-1005." },
+    { flag: row.collect_caregiver_name, label: "Caregiver name", prompt: "And your full name?" },
     { flag: row.collect_client_name, label: "Client name", prompt: "Which client's shift are you calling about?" },
     { flag: row.collect_shift_date, label: "Shift date", prompt: "What date is the shift?" },
     { flag: row.collect_shift_time, label: "Shift time", prompt: "What time does the shift start?" },
@@ -331,6 +340,8 @@ When passing dates to tools, always convert to YYYY-MM-DD format.
     `The caller is a caregiver calling out of a shift.`,
     `Acknowledge their call: "I understand. Let me get some details so we can arrange coverage."`,
     ``,
+    `IMPORTANT — Employee ID first: Always ask for the employee ID before the name. The ID starts with E followed by digits (e.g. E-1005). Recognize spoken variants: "E one zero zero five", "E ten oh five", "my ID is 1005", "e1005" all mean E-1005. If they provide an employee ID, the name is optional — you can skip it.`,
+    ``,
     `Collect the following information one question at a time:`,
     ...enabledIntakeFields.map((f, i) => `${i + 1}. ${f.label}: "${f.prompt}"`),
     ``,
@@ -340,7 +351,7 @@ When passing dates to tools, always convert to YYYY-MM-DD format.
   if (row.auto_fill_shifts) {
     calloutIntakeLines.push(
       ``,
-      `Once you have the caregiver's name and shift date, use the cancel_shift tool to cancel the shift immediately.`,
+      `Once you have the caregiver's name and shift date, first call get_current_date to confirm today's date, then use the cancel_shift tool to cancel the shift.`,
       `If the caller provides their employee ID (e.g. E-1001), pass it as caregiver_short_id for an exact lookup.`,
       `Pass the caregiver's first name, last name (if provided), shift date (YYYY-MM-DD), and shift time (HH:MM 24h, if known).`,
       ``,
@@ -373,19 +384,22 @@ When passing dates to tools, always convert to YYYY-MM-DD format.
     `The caller has a schedule change or reschedule request.`,
     `Acknowledge: "I can help with that. Let me get the details."`,
     ``,
+    `IMPORTANT — Employee ID first: Always ask for the employee ID before the name. The ID starts with E followed by digits (e.g. E-1005). Recognize spoken variants: "E one zero zero five", "E ten oh five", "my ID is 1005", "e1005" all mean E-1005. If they provide an employee ID, the name is optional.`,
+    ``,
     `Collect:`,
-    `1. Their name (first and last name if possible)`,
-    `2. What change they need (change time, change date, cancel visit, etc.)`,
-    `3. The current shift date (in YYYY-MM-DD format)`,
-    `4. The current shift time (approximate start time, if known)`,
-    `5. The new date and/or time they want`,
-    `6. The reason for the change (optional, don't push if they don't want to share)`,
+    `1. Their employee ID (e.g. E-1005)`,
+    `2. Their name (first and last — optional if employee ID provided)`,
+    `3. What change they need (change time, change date, cancel visit, etc.)`,
+    `4. The current shift date (in YYYY-MM-DD format)`,
+    `5. The current shift time (approximate start time, if known)`,
+    `6. The new date and/or time they want`,
+    `7. The reason for the change (optional, don't push if they don't want to share)`,
   ];
 
   if (row.auto_fill_shifts) {
     scheduleChangeLines.push(
       ``,
-      `Once you have the caregiver's name, current shift date, and the new date/time:`,
+      `Once you have the caregiver's name, current shift date, and the new date/time, first call get_current_date to confirm today's date, then:`,
       `If the caller provides their employee ID (e.g. E-1001), pass it as caregiver_short_id for an exact lookup.`,
       `- If they want to CANCEL the shift → use the cancel_shift tool`,
       `- If they want to RESCHEDULE (change date or time) → use the change_schedule tool`,

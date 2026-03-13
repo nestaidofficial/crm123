@@ -289,7 +289,7 @@ export function mapCreateEventToRow(
     start_at: typeof input.startAt === "string" ? input.startAt : (input.startAt as any).toISOString(),
     end_at: typeof input.endAt === "string" ? input.endAt : (input.endAt as any).toISOString(),
     is_all_day: input.isAllDay ?? false,
-    is_open_shift: input.isOpenShift ?? false,
+    is_open_shift: input.isOpenShift ?? (input.clientId && !input.caregiverId ? true : false),
     color: input.color ?? null,
     description: input.description ?? null,
     instructions: input.instructions ?? null,

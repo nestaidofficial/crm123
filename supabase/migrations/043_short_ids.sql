@@ -115,10 +115,27 @@ CREATE POLICY "service_role_full_access" ON short_id_counters
   USING (true)
   WITH CHECK (true);
 
--- Allow authenticated users to read counters for their agency
+-- Allow authenticated users to read/insert/update counters for their agency
 CREATE POLICY "authenticated_read_own_agency" ON short_id_counters
   FOR SELECT
   TO authenticated
   USING (agency_id IN (
+    SELECT agency_id FROM agency_members WHERE user_id = auth.uid()
+  ));
+
+CREATE POLICY "authenticated_insert_own_agency" ON short_id_counters
+  FOR INSERT
+  TO authenticated
+  WITH CHECK (agency_id IN (
+    SELECT agency_id FROM agency_members WHERE user_id = auth.uid()
+  ));
+
+CREATE POLICY "authenticated_update_own_agency" ON short_id_counters
+  FOR UPDATE
+  TO authenticated
+  USING (agency_id IN (
+    SELECT agency_id FROM agency_members WHERE user_id = auth.uid()
+  ))
+  WITH CHECK (agency_id IN (
     SELECT agency_id FROM agency_members WHERE user_id = auth.uid()
   ));

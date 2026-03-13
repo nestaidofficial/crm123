@@ -204,6 +204,7 @@ interface CoordinatorRequestRow {
   id: string;
   requestType: string;
   caregiverName: string | null;
+  caregiverShortId: string | null;
   shiftDate: string | null;
   shiftTime: string | null;
   reason: string | null;
@@ -264,6 +265,9 @@ function RequestsTable({ records, onAction }: RequestsTableProps) {
                 <td className="py-2.5 px-3">
                   <div className="text-[13px] font-medium text-neutral-900 whitespace-nowrap">
                     {record.caregiverName || "—"}
+                    {record.caregiverShortId && (
+                      <span className="ml-1.5 text-[10px] font-mono text-neutral-400">{record.caregiverShortId}</span>
+                    )}
                   </div>
                 </td>
                 <td className="py-2.5 px-3">
