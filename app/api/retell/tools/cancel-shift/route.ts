@@ -223,25 +223,26 @@ export async function POST(request: NextRequest) {
     const endTime = formatTime(targetShift.end_at);
 
     if (isAutoAssign) {
-      // ── Direct cancel (auto-assign mode) ───────────────────────
+      // ── Remove caregiver from shift (auto-assign mode) ─────────
+      // Shift stays scheduled — just becomes vacant/open for coverage
       const { error: updateError } = await supabase
         .from("schedule_events")
-        .update({ status: "cancelled" })
+        .update({ caregiver_id: null })
         .eq("id", targetShift.id);
 
       if (updateError) {
         console.error("[cancel-shift] Update error:", updateError);
-        return NextResponse.json({ result: "error", message: "Failed to cancel shift" });
+        return NextResponse.json({ result: "error", message: "Failed to update shift" });
       }
 
       // Audit log
       await supabase.from("schedule_audit_log").insert({
         event_id: targetShift.id,
         agency_id: agencyId,
-        action: "cancelled",
-        field_changed: "status",
-        old_value: JSON.stringify({ status: targetShift.status }),
-        new_value: JSON.stringify({ status: "cancelled" }),
+        action: "caregiver_removed",
+        field_changed: "caregiver_id",
+        old_value: JSON.stringify({ caregiver_id: caregiver.id }),
+        new_value: JSON.stringify({ caregiver_id: null }),
         actor_id: null,
       });
 
@@ -273,7 +274,7 @@ export async function POST(request: NextRequest) {
 
       return NextResponse.json({
         result: "success",
-        message: `Cancelled shift for ${caregiver.first_name} on ${shiftDate} (${startTime} - ${endTime}). The scheduling team has been notified.`,
+        message: `${caregiver.first_name} has been removed from the shift on ${shiftDate} (${startTime} - ${endTime}). The shift is now open for coverage. The scheduling team has been notified.`,
       });
     }
 

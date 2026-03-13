@@ -80,6 +80,9 @@ export async function GET(request: NextRequest) {
     }
     if (status) {
       query = query.eq("status", status);
+    } else {
+      // Exclude cancelled shifts by default
+      query = query.neq("status", "cancelled");
     }
     if (isOpenShift === "true") {
       query = query.eq("is_open_shift", true);

@@ -58,19 +58,27 @@ export async function PATCH(
   const newStatus = action === "approve" ? "approved" : "rejected";
 
   // Update the request
-  const { error: updateErr } = await supabase
+  const { data: updateData, error: updateErr } = await supabase
     .from("coverage_requests")
     .update({
       status: newStatus,
       reviewed_by: userId,
       reviewed_at: now,
     })
-    .eq("id", id);
+    .eq("id", id)
+    .select("id, status");
 
   if (updateErr) {
     console.error("[coordinator-requests] PATCH update error:", updateErr);
     return NextResponse.json({ error: "Failed to update request" }, { status: 500 });
   }
+
+  if (!updateData || updateData.length === 0) {
+    console.error(`[coordinator-requests] PATCH: no rows updated for id=${id}. Possible RLS issue.`);
+    return NextResponse.json({ error: "Update failed — no rows affected. Check user permissions." }, { status: 403 });
+  }
+
+  console.log(`[coordinator-requests] PATCH: request ${id} → ${newStatus} (verified: ${updateData[0].status})`);
 
   let warning: string | null = null;
 
@@ -84,35 +92,36 @@ export async function PATCH(
       // Fetch the schedule event
       const { data: evt, error: evtErr } = await supabase
         .from("schedule_events")
-        .select("id, status")
+        .select("id, status, caregiver_id")
         .eq("id", eventId)
         .single();
 
       if (evtErr || !evt) {
+        console.error("[coordinator-requests] Event fetch error:", evtErr);
         warning = "Shift not found — it may have been deleted. Request approved but no schedule change made.";
-      } else if (evt.status === "cancelled") {
-        warning = "Shift was already cancelled. Request approved.";
+      } else if (!evt.caregiver_id) {
+        warning = "Shift already has no caregiver assigned. Request approved.";
       } else if (evt.status !== "scheduled" && evt.status !== "confirmed") {
-        warning = `Shift status is "${evt.status}" — cannot cancel. Request approved but no schedule change made.`;
+        warning = `Shift status is "${evt.status}" — cannot modify. Request approved but no schedule change made.`;
       } else {
-        // Cancel the shift
-        const { error: cancelErr } = await supabase
+        // Remove caregiver from shift (makes it a vacant/open shift needing coverage)
+        const { error: updateErr } = await supabase
           .from("schedule_events")
-          .update({ status: "cancelled" })
+          .update({ caregiver_id: null })
           .eq("id", eventId);
 
-        if (cancelErr) {
-          console.error("[coordinator-requests] Cancel event error:", cancelErr);
-          warning = "Failed to cancel the shift. Please cancel it manually.";
+        if (updateErr) {
+          console.error("[coordinator-requests] Remove caregiver error:", updateErr);
+          warning = "Failed to update the shift. Please remove the caregiver manually.";
         } else {
           // Audit log
           await supabase.from("schedule_audit_log").insert({
             event_id: eventId,
             agency_id: agencyId,
-            action: "cancelled",
-            field_changed: "status",
-            old_value: JSON.stringify({ status: evt.status }),
-            new_value: JSON.stringify({ status: "cancelled" }),
+            action: "caregiver_removed",
+            field_changed: "caregiver_id",
+            old_value: JSON.stringify({ caregiver_id: evt.caregiver_id }),
+            new_value: JSON.stringify({ caregiver_id: null }),
             actor_id: userId,
           });
         }
@@ -216,16 +225,16 @@ export async function PATCH(
         } else if (!shifts || shifts.length === 0) {
           warning = `No scheduled shift found for ${caregiver.first_name} ${caregiver.last_name} on ${shiftDate}. Request approved but no schedule change made.`;
         } else {
-          // Cancel all matching shifts on that date (usually just one)
+          // Remove caregiver from matching shifts (makes them vacant/open for coverage)
           for (const shift of shifts) {
-            const { error: cancelErr } = await supabase
+            const { error: updateErr } = await supabase
               .from("schedule_events")
-              .update({ status: "cancelled" })
+              .update({ caregiver_id: null })
               .eq("id", shift.id);
 
-            if (cancelErr) {
-              console.error("[coordinator-requests] Cancel shift error:", cancelErr);
-              warning = "Failed to cancel the shift. Please cancel it manually.";
+            if (updateErr) {
+              console.error("[coordinator-requests] Remove caregiver error:", updateErr);
+              warning = "Failed to update the shift. Please remove the caregiver manually.";
               break;
             }
 
@@ -233,10 +242,10 @@ export async function PATCH(
             await supabase.from("schedule_audit_log").insert({
               event_id: shift.id,
               agency_id: agencyId,
-              action: "cancelled",
-              field_changed: "status",
-              old_value: JSON.stringify({ status: shift.status }),
-              new_value: JSON.stringify({ status: "cancelled" }),
+              action: "caregiver_removed",
+              field_changed: "caregiver_id",
+              old_value: JSON.stringify({ caregiver_id: caregiver.id }),
+              new_value: JSON.stringify({ caregiver_id: null }),
               actor_id: userId,
             });
           }
