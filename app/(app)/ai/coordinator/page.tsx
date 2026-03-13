@@ -41,6 +41,7 @@ import {
   MessageCircle,
   Clock,
   FileText,
+  Trash2,
 } from "lucide-react";
 import { CoordinatorSetup } from "@/components/ai/coordinator-setup";
 import { useCoordinatorStore } from "@/store/useCoordinatorStore";
@@ -100,9 +101,10 @@ function statusClass(s: CoverageStatus) {
 
 interface CoverageLogTableProps {
   records: CoverageRequest[];
+  onDelete?: (id: string) => void;
 }
 
-function CoverageLogTable({ records }: CoverageLogTableProps) {
+function CoverageLogTable({ records, onDelete }: CoverageLogTableProps) {
   const rowVariants = {
     hidden: { opacity: 0, y: 10 },
     visible: (i: number) => ({
@@ -120,7 +122,7 @@ function CoverageLogTable({ records }: CoverageLogTableProps) {
       <table className="min-w-full">
         <thead>
           <tr className="border-b border-neutral-200">
-            {["Caregiver", "Client", "Shift", "Reason", "Urgency", "Status", "Assigned To", "Time"].map((h) => (
+            {["Caregiver", "Client", "Shift", "Reason", "Urgency", "Status", "Assigned To", "Time", "Actions"].map((h) => (
               <th key={h} className={thClass}>
                 <span className={thLabel}>{h}</span>
               </th>
@@ -179,11 +181,25 @@ function CoverageLogTable({ records }: CoverageLogTableProps) {
                 <td className="py-2.5 px-3">
                   <div className="text-[12px] text-neutral-500 whitespace-nowrap">{record.time}</div>
                 </td>
+
+                {/* Actions */}
+                <td className="py-2.5 px-3">
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onDelete?.(record.id);
+                    }}
+                    className="p-1.5 hover:bg-red-50 rounded transition-colors"
+                    title="Delete"
+                  >
+                    <Trash2 className="h-3.5 w-3.5 text-red-600" />
+                  </button>
+                </td>
               </motion.tr>
             ))
           ) : (
             <tr>
-              <td colSpan={8} className="py-12 text-center text-[13px] text-neutral-400">
+              <td colSpan={9} className="py-12 text-center text-[13px] text-neutral-400">
                 No coverage requests found.
               </td>
             </tr>
@@ -221,9 +237,10 @@ function requestStatusClass(s: RequestStatus) {
 interface RequestsTableProps {
   records: CoordinatorRequestRow[];
   onAction: (id: string, action: "approve" | "reject") => void;
+  onDelete?: (id: string) => void;
 }
 
-function RequestsTable({ records, onAction }: RequestsTableProps) {
+function RequestsTable({ records, onAction, onDelete }: RequestsTableProps) {
   const rowVariants = {
     hidden: { opacity: 0, y: 10 },
     visible: (i: number) => ({
@@ -296,26 +313,36 @@ function RequestsTable({ records, onAction }: RequestsTableProps) {
                   </div>
                 </td>
                 <td className="py-2.5 px-3">
-                  {record.status === "pending" ? (
-                    <div className="flex items-center gap-1.5">
-                      <button
-                        onClick={() => onAction(record.id, "approve")}
-                        className="inline-flex items-center justify-center h-7 w-7 rounded-md border border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 transition-colors"
-                        title="Approve"
-                      >
-                        <Check className="h-3.5 w-3.5" />
-                      </button>
-                      <button
-                        onClick={() => onAction(record.id, "reject")}
-                        className="inline-flex items-center justify-center h-7 w-7 rounded-md border border-neutral-200 bg-neutral-50 text-neutral-500 hover:bg-red-50 hover:text-red-600 hover:border-red-200 transition-colors"
-                        title="Reject"
-                      >
-                        <X className="h-3.5 w-3.5" />
-                      </button>
-                    </div>
-                  ) : (
-                    <div className="text-[12px] text-neutral-400">—</div>
-                  )}
+                  <div className="flex items-center gap-1.5">
+                    {record.status === "pending" ? (
+                      <>
+                        <button
+                          onClick={() => onAction(record.id, "approve")}
+                          className="inline-flex items-center justify-center h-7 w-7 rounded-md border border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 transition-colors"
+                          title="Approve"
+                        >
+                          <Check className="h-3.5 w-3.5" />
+                        </button>
+                        <button
+                          onClick={() => onAction(record.id, "reject")}
+                          className="inline-flex items-center justify-center h-7 w-7 rounded-md border border-neutral-200 bg-neutral-50 text-neutral-500 hover:bg-red-50 hover:text-red-600 hover:border-red-200 transition-colors"
+                          title="Reject"
+                        >
+                          <X className="h-3.5 w-3.5" />
+                        </button>
+                      </>
+                    ) : null}
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onDelete?.(record.id);
+                      }}
+                      className="p-1.5 hover:bg-red-50 rounded transition-colors"
+                      title="Delete"
+                    >
+                      <Trash2 className="h-3.5 w-3.5 text-red-600" />
+                    </button>
+                  </div>
                 </td>
               </motion.tr>
             ))
@@ -373,6 +400,7 @@ interface ResponseData {
 interface VacantShift {
   id: string;
   clientName: string;
+  clientCity?: string;
   date: string;
   time: string;
   fullDateTime: string;
@@ -443,6 +471,7 @@ export default function CoordinatorPage() {
   const [selectedShift, setSelectedShift] = useState<string | null>(null);
   const [assignedShifts, setAssignedShifts] = useState<Record<string, string>>({});
   const [autoSchedulerEnabled, setAutoSchedulerEnabled] = useState(false);
+  const [autoSchedulerLoading, setAutoSchedulerLoading] = useState(false);
   const [outreachSent, setOutreachSent] = useState(false);
   const [selectedResponseId, setSelectedResponseId] = useState<string | null>(null);
 
@@ -582,6 +611,42 @@ export default function CoordinatorPage() {
     hydrateSchedule({ startDate: "2026-03-07", endDate: "2026-03-07" });
   }, [hydrateEmployees, hydrateClients, hydrateSchedule]);
 
+  // Fetch auto scheduler toggle state on mount
+  useEffect(() => {
+    if (!agencyId) return;
+    (async () => {
+      try {
+        const res = await apiFetch("/api/ai/coordinator/config");
+        if (res.ok) {
+          const { data } = await res.json();
+          if (typeof data?.autoSchedulerEnabled === "boolean") {
+            setAutoSchedulerEnabled(data.autoSchedulerEnabled);
+          }
+        }
+      } catch {
+        // Silently fail — toggle defaults to OFF
+      }
+    })();
+  }, [agencyId]);
+
+  // Persist auto scheduler toggle to DB
+  const handleAutoSchedulerToggle = useCallback(async (enabled: boolean) => {
+    setAutoSchedulerLoading(true);
+    setAutoSchedulerEnabled(enabled);
+    try {
+      await apiFetch("/api/ai/coordinator/config", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ autoSchedulerEnabled: enabled }),
+      });
+    } catch {
+      // Revert on failure
+      setAutoSchedulerEnabled(!enabled);
+    } finally {
+      setAutoSchedulerLoading(false);
+    }
+  }, []);
+
   // Fetch requests + coverage log + vacant shifts once agency ID is available
   useEffect(() => {
     fetchCoordRequests();
@@ -613,13 +678,37 @@ export default function CoordinatorPage() {
     }, [handleRequestsChange]),
   });
 
+  // When a shift becomes vacant and auto-scheduler is ON, fire the trigger pipeline
+  const handleShiftBecameVacant = useCallback(async (eventId: string) => {
+    if (!autoSchedulerEnabled) return;
+    try {
+      await apiFetch("/api/coordinator/trigger-coverage", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ eventId }),
+      });
+    } catch (err) {
+      console.error("[auto-scheduler] Failed to trigger coverage for event:", eventId, err);
+    }
+  }, [autoSchedulerEnabled]);
+
   useSupabaseRealtimeMulti("schedule_events", {
-    onInsert: useCallback(() => {
+    onInsert: useCallback((record: any) => {
       handleScheduleChange();
-    }, [handleScheduleChange]),
-    onUpdate: useCallback(() => {
+      fetchVacantShifts();
+      // New shift inserted with no caregiver → auto-trigger
+      if (record?.caregiver_id == null && record?.id) {
+        handleShiftBecameVacant(record.id);
+      }
+    }, [handleScheduleChange, fetchVacantShifts, handleShiftBecameVacant]),
+    onUpdate: useCallback((record: any, old: any) => {
       handleScheduleChange();
-    }, [handleScheduleChange]),
+      fetchVacantShifts();
+      // Shift just became vacant (caregiver was removed) → auto-trigger
+      if (record?.caregiver_id == null && old?.caregiver_id != null && record?.id) {
+        handleShiftBecameVacant(record.id);
+      }
+    }, [handleScheduleChange, fetchVacantShifts, handleShiftBecameVacant]),
   });
 
   // ── Real-time: refresh outreach responses when outreach_attempts changes ──
@@ -657,6 +746,48 @@ export default function CoordinatorPage() {
       toast.error(`Failed to ${action} request`);
     }
   }
+
+  // Coverage Log delete handler
+  const handleDeleteCoverageRequest = useCallback(async (id: string) => {
+    if (!window.confirm("Are you sure you want to delete this coverage request?")) {
+      return;
+    }
+
+    try {
+      const res = await apiFetch(`/api/coordinator-requests/${id}`, {
+        method: "DELETE",
+      });
+      if (res.ok) {
+        toast.success("Coverage request deleted");
+        setCoverageLogData((prev) => prev.filter((r) => r.id !== id));
+      } else {
+        toast.error("Failed to delete coverage request");
+      }
+    } catch {
+      toast.error("Failed to delete coverage request");
+    }
+  }, []);
+
+  // Coordinator request delete handler
+  const handleDeleteCoordinatorRequest = useCallback(async (id: string) => {
+    if (!window.confirm("Are you sure you want to delete this coordinator request?")) {
+      return;
+    }
+
+    try {
+      const res = await apiFetch(`/api/coordinator-requests/${id}`, {
+        method: "DELETE",
+      });
+      if (res.ok) {
+        toast.success("Request deleted");
+        setCoordRequests((prev) => prev.filter((r) => r.id !== id));
+      } else {
+        toast.error("Failed to delete request");
+      }
+    } catch {
+      toast.error("Failed to delete request");
+    }
+  }, []);
 
   // Helper functions for new coordinator tab
   const handleToggleChange = (caregiverId: string, type: "call" | "text", value: boolean) => {
@@ -888,7 +1019,8 @@ export default function CoordinatorPage() {
           <div className="flex items-center gap-2 ml-4 mr-8 rounded-full border border-neutral-200 bg-white px-3 py-2">
             <Switch
               checked={autoSchedulerEnabled}
-              onCheckedChange={setAutoSchedulerEnabled}
+              onCheckedChange={handleAutoSchedulerToggle}
+              disabled={autoSchedulerLoading}
               aria-label="Auto Scheduler"
             />
             <div className="flex items-center gap-1.5">
@@ -897,9 +1029,11 @@ export default function CoordinatorPage() {
                 Auto Scheduler
               </span>
             </div>
-            {autoSchedulerEnabled && (
+            {autoSchedulerLoading ? (
+              <div className="h-2 w-2 rounded-full bg-neutral-400 animate-spin border border-neutral-300" />
+            ) : autoSchedulerEnabled ? (
               <div className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-            )}
+            ) : null}
           </div>
         </div>
 
@@ -979,7 +1113,10 @@ export default function CoordinatorPage() {
                   <Loader2 className="h-5 w-5 animate-spin text-neutral-400" />
                 </div>
               ) : (
-                <CoverageLogTable records={filteredRequests} />
+                <CoverageLogTable 
+                  records={filteredRequests}
+                  onDelete={handleDeleteCoverageRequest}
+                />
               )}
             </CardContent>
           </Card>
@@ -1030,6 +1167,7 @@ export default function CoordinatorPage() {
                       : coordRequests.filter((r) => r.status === reqStatusFilter)
                   }
                   onAction={handleRequestAction}
+                  onDelete={handleDeleteCoordinatorRequest}
                 />
               )}
             </CardContent>
@@ -1084,6 +1222,9 @@ export default function CoordinatorPage() {
                                   {response.role}
                                 </Badge>
                                 {getResponseStatusBadge(response.status)}
+                                {response.distance && (
+                                  <span className="text-[10px] text-neutral-500">{response.distance}</span>
+                                )}
                               </div>
                             </div>
                             {response.status === "accepted" && selectedShift && !isExpanded && (
@@ -1257,7 +1398,7 @@ export default function CoordinatorPage() {
                         <div className="flex items-center gap-3 p-3 rounded-lg border border-neutral-200 bg-neutral-50">
                           <Calendar className="h-4 w-4 text-neutral-500 shrink-0" />
                           <div className="flex flex-col flex-1 min-w-0">
-                            <span className="text-[12px] font-medium text-neutral-900">{selectedShiftData.clientName}</span>
+                            <span className="text-[12px] font-medium text-neutral-900">{selectedShiftData.clientName}{selectedShiftData.clientCity ? ` - ${selectedShiftData.clientCity}` : ''}</span>
                             <span className="text-[11px] text-neutral-600">{selectedShiftData.fullDateTime}</span>
                           </div>
                           <Badge variant="warning" className="text-[10px] h-5 px-2 shrink-0">Vacant</Badge>
@@ -1375,7 +1516,7 @@ export default function CoordinatorPage() {
                           >
                             <div className="flex flex-col flex-1 min-w-0">
                               <span className="text-[12px] font-medium text-neutral-900">
-                                {shift.clientName}
+                                {shift.clientName}{shift.clientCity ? ` - ${shift.clientCity}` : ''}
                               </span>
                               <span className="text-[11px] text-neutral-600">
                                 {shift.fullDateTime}

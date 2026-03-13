@@ -54,6 +54,9 @@ export interface CoordinatorConfigRow {
   ai_notify_scheduler: boolean;
   assignment_mode: "suggest" | "approval" | "auto-assign";
 
+  // Auto Scheduler
+  auto_scheduler_enabled: boolean;
+
   // Step 5: Escalations
   escalate_medical_emergency: boolean;
   escalate_abuse_report: boolean;
@@ -88,6 +91,7 @@ export interface CoordinatorConfigRow {
 
 export interface CoordinatorConfigApi extends CoordinatorSetupValues {
   agencyId: string;
+  autoSchedulerEnabled: boolean;
   isActive: boolean;
   retellLlmId: string | null;
   retellAgentId: string | null;
@@ -108,6 +112,7 @@ export function mapCoordinatorConfigRowToApi(
 ): CoordinatorConfigApi {
   return {
     agencyId: row.agency_id,
+    autoSchedulerEnabled: row.auto_scheduler_enabled ?? false,
 
     // Nested shape matching CoordinatorSetupValues
     lineRouting: {
@@ -199,6 +204,7 @@ export function mapApiToCoordinatorConfigRow(
   agencyId: string
 ): Omit<
   CoordinatorConfigRow,
+  | "auto_scheduler_enabled"
   | "retell_llm_id"
   | "retell_agent_id"
   | "retell_phone_number_id"

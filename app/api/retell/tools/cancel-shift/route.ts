@@ -3,6 +3,7 @@ import Retell from "retell-sdk";
 import { getRetellClient } from "@/lib/retell/client";
 import { createServerSupabaseServiceClient } from "@/lib/supabase/server";
 import { normalizeShortId } from "@/lib/utils";
+import { triggerAutoCoverage } from "@/lib/auto-scheduler/trigger";
 
 /**
  * POST /api/retell/tools/cancel-shift
@@ -74,7 +75,7 @@ export async function POST(request: NextRequest) {
 
     const { data: coordConfig } = await supabase
       .from("coordinator_config")
-      .select("agency_id, auto_fill_shifts, assignment_mode")
+      .select("agency_id, auto_fill_shifts, assignment_mode, auto_scheduler_enabled")
       .eq("retell_agent_id", agentId)
       .maybeSingle();
 
@@ -222,12 +223,76 @@ export async function POST(request: NextRequest) {
     const startTime = formatTime(targetShift.start_at);
     const endTime = formatTime(targetShift.end_at);
 
-    if (isAutoAssign) {
-      // ── Remove caregiver from shift (auto-assign mode) ─────────
-      // Shift stays scheduled — just becomes vacant/open for coverage
+    if (coordConfig.auto_scheduler_enabled) {
+      // ── Auto Scheduler mode — auto-approve + trigger outreach ──
       const { error: updateError } = await supabase
         .from("schedule_events")
-        .update({ caregiver_id: null })
+        .update({ caregiver_id: null, is_open_shift: true })
+        .eq("id", targetShift.id);
+
+      if (updateError) {
+        console.error("[cancel-shift] Update error:", updateError);
+        return NextResponse.json({ result: "error", message: "Failed to update shift" });
+      }
+
+      // Audit log
+      await supabase.from("schedule_audit_log").insert({
+        event_id: targetShift.id,
+        agency_id: agencyId,
+        action: "caregiver_removed",
+        field_changed: "caregiver_id",
+        old_value: JSON.stringify({ caregiver_id: caregiver.id }),
+        new_value: JSON.stringify({ caregiver_id: null }),
+        actor_id: null,
+        notes: "Auto-scheduler: callout auto-approved",
+      });
+
+      // Insert approved request row (auto-approved, not pending)
+      await supabase.from("coverage_requests").insert({
+        agency_id: agencyId,
+        request_type: "cancel_shift",
+        caregiver_name: `${caregiver.first_name} ${caregiver.last_name}`,
+        caregiver_id: caregiver.id,
+        event_id: targetShift.id,
+        shift_date: shiftDate,
+        shift_time: shiftTime || null,
+        reason: "Call-out via phone",
+        status: "approved",
+        retell_call_id: callId,
+        action_payload: {
+          action: "cancel",
+          event_id: targetShift.id,
+          original_status: targetShift.status,
+        },
+      });
+
+      await logToSyncLog(supabase, agencyId, callId, "auto_approved", {
+        caregiverId: caregiver.id,
+        caregiverName: `${caregiver.first_name} ${caregiver.last_name}`,
+        eventId: targetShift.id,
+        shiftDate,
+      });
+
+      // Fire-and-forget: trigger auto-coverage outreach
+      triggerAutoCoverage({
+        agencyId,
+        eventId: targetShift.id,
+        originalCaregiverId: caregiver.id,
+        originalCallId: callId,
+        supabase,
+      }).catch((err) => console.error("[cancel-shift] Auto-coverage trigger failed:", err));
+
+      return NextResponse.json({
+        result: "success",
+        message: `Your callout has been noted for ${shiftDate} (${startTime} - ${endTime}). We're working on finding coverage.`,
+      });
+    }
+
+    if (isAutoAssign) {
+      // ── Remove caregiver from shift (auto-assign mode, no auto-outreach) ──
+      const { error: updateError } = await supabase
+        .from("schedule_events")
+        .update({ caregiver_id: null, is_open_shift: true })
         .eq("id", targetShift.id);
 
       if (updateError) {
@@ -272,9 +337,18 @@ export async function POST(request: NextRequest) {
         shiftDate,
       });
 
+      // Fire-and-forget: trigger auto-coverage outreach
+      triggerAutoCoverage({
+        agencyId,
+        eventId: targetShift.id,
+        originalCaregiverId: caregiver.id,
+        originalCallId: callId,
+        supabase,
+      }).catch((err) => console.error("[cancel-shift] Auto-coverage trigger failed:", err));
+
       return NextResponse.json({
         result: "success",
-        message: `${caregiver.first_name} has been removed from the shift on ${shiftDate} (${startTime} - ${endTime}). The shift is now open for coverage. The scheduling team has been notified.`,
+        message: `We're working on finding coverage for the shift on ${shiftDate} (${startTime} - ${endTime}).`,
       });
     }
 

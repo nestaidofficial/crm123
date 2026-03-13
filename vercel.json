@@ -1,0 +1,12 @@
+{
+  "crons": [
+    {
+      "path": "/api/cron/auto-scheduler-timeout",
+      "schedule": "* * * * *"
+    },
+    {
+      "path": "/api/cron/auto-coverage-scan",
+      "schedule": "*/2 * * * *"
+    }
+  ]
+}

@@ -14,6 +14,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { useAuthStore } from "@/store/useAuthStore";
+import { cn } from "@/lib/utils";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -42,8 +43,21 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-stone-50 p-4">
-      <Card className="w-full max-w-md">
+    <div className="relative min-h-screen flex items-center justify-center bg-white dark:bg-black p-4">
+      {/* Dot Background Pattern */}
+      <div
+        className={cn(
+          "absolute inset-0",
+          "[background-size:20px_20px]",
+          "[background-image:radial-gradient(#d4d4d4_1px,transparent_1px)]",
+          "dark:[background-image:radial-gradient(#404040_1px,transparent_1px)]",
+        )}
+      />
+      {/* Radial gradient overlay for faded effect */}
+      <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-white [mask-image:radial-gradient(ellipse_at_center,transparent_20%,black)] dark:bg-black"></div>
+      
+      {/* Login Card */}
+      <Card className="w-full max-w-md relative z-10">
         <CardHeader className="space-y-1">
           <div className="flex items-center justify-center mb-4">
             <h1 className="text-lg font-semibold">Nessa</h1>

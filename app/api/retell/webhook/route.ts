@@ -4,6 +4,8 @@ import Retell from "retell-sdk";
 import { createServerSupabaseServiceClient } from "@/lib/supabase/server";
 import { getAppUrl } from "@/lib/url";
 import { normalizeShortId } from "@/lib/utils";
+import { handleAutoAssignment } from "@/lib/auto-scheduler/assign";
+import { triggerAutoCoverage } from "@/lib/auto-scheduler/trigger";
 
 /** GET /api/retell/webhook — diagnostic: verify this endpoint is reachable */
 export async function GET() {
@@ -281,6 +283,16 @@ async function createRequestFromAnalysis(
 
     const normalizedShortId = rawShortId ? normalizeShortId(rawShortId) : null;
 
+    // Check if auto-scheduler is enabled for auto-approve
+    const { data: coordConfig } = await supabase
+      .from("coordinator_config")
+      .select("auto_scheduler_enabled")
+      .eq("agency_id", agencyId)
+      .maybeSingle();
+
+    const autoApprove = coordConfig?.auto_scheduler_enabled && requestType === "callout";
+    const status = autoApprove ? "approved" : "pending";
+
     await supabase.from("coverage_requests").insert({
       agency_id: agencyId,
       request_type: requestType,
@@ -289,7 +301,7 @@ async function createRequestFromAnalysis(
       client_name: clientName,
       shift_date: shiftDate,
       reason: callSummary,
-      status: "pending",
+      status,
       retell_call_id: callId,
       action_payload: {
         call_type: callType,
@@ -300,7 +312,67 @@ async function createRequestFromAnalysis(
       },
     });
 
-    console.log(`[Retell] Created ${requestType} request from call ${callId} (row inserted)`);
+    console.log(`[Retell] Created ${requestType} request from call ${callId} (status: ${status})`);
+
+    // If auto-approved callout, find and vacate the shift + trigger outreach
+    if (autoApprove && caregiverId && shiftDate) {
+      try {
+        // Find the shift to vacate
+        const shiftStart = new Date(shiftDate);
+        const dayStart = new Date(shiftStart);
+        dayStart.setHours(0, 0, 0, 0);
+        const dayEnd = new Date(shiftStart);
+        dayEnd.setHours(23, 59, 59, 999);
+
+        const { data: targetShift } = await supabase
+          .from("schedule_events")
+          .select("id")
+          .eq("agency_id", agencyId)
+          .eq("caregiver_id", caregiverId)
+          .gte("start_at", dayStart.toISOString())
+          .lte("start_at", dayEnd.toISOString())
+          .maybeSingle();
+
+        if (targetShift) {
+          // Vacate the shift
+          await supabase
+            .from("schedule_events")
+            .update({ caregiver_id: null, is_open_shift: true })
+            .eq("id", targetShift.id);
+
+          // Add audit log
+          await supabase.from("schedule_audit_log").insert({
+            event_id: targetShift.id,
+            agency_id: agencyId,
+            action: "caregiver_removed",
+            field_changed: "caregiver_id",
+            old_value: JSON.stringify({ caregiver_id: caregiverId }),
+            new_value: JSON.stringify({ caregiver_id: null }),
+            actor_id: null,
+          });
+
+          // Trigger auto-coverage
+          const serviceClient = createServerSupabaseServiceClient();
+          if (serviceClient) {
+            triggerAutoCoverage({
+              agencyId,
+              eventId: targetShift.id,
+              originalCaregiverId: caregiverId,
+              originalCallId: callId,
+              supabase: serviceClient,
+            }).catch((err) => {
+              console.error("[Retell] Auto-coverage trigger failed:", err);
+            });
+          }
+
+          console.log(`[Retell] Auto-approved callout: vacated shift ${targetShift.id} and triggered coverage`);
+        } else {
+          console.warn(`[Retell] Auto-approved callout but could not find shift for caregiver ${caregiverId} on ${shiftDate}`);
+        }
+      } catch (err) {
+        console.error("[Retell] Failed to process auto-approved callout:", err);
+      }
+    }
   } catch (err) {
     // Log but don't fail the webhook — the sync log was already written
     console.error("[Retell] Failed to create request from analysis:", err);
@@ -347,6 +419,11 @@ async function handleOutboundCallAnalysis(
       .eq("id", attemptId);
 
     console.log(`[Retell] Outbound call analyzed: attempt ${attemptId} → ${newStatus}`);
+
+    // Auto-assign if accepted and auto-scheduler is active
+    if (newStatus === "accepted") {
+      await handleAutoAssignment(supabase, attemptId);
+    }
   } catch (err) {
     console.error("[Retell] Failed to handle outbound call analysis:", err);
   }

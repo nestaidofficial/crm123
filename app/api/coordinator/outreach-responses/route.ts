@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAuth, isAuthError } from "@/lib/api-auth";
+import { geocodeAddress } from "@/lib/geo/geocode";
+import { haversineDistance, formatDistance } from "@/lib/geo/distance";
 
 /**
  * GET /api/coordinator/outreach-responses?eventId=X
@@ -19,9 +21,10 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Missing eventId" }, { status: 400 });
   }
 
+  // Fetch outreach attempts with employee details
   const { data, error } = await supabase
     .from("outreach_attempts")
-    .select("*, employees(id, first_name, last_name, role)")
+    .select("*, employees(id, first_name, last_name, role, address)")
     .eq("agency_id", agencyId)
     .eq("event_id", eventId)
     .order("initiated_at", { ascending: true });
@@ -29,6 +32,23 @@ export async function GET(request: NextRequest) {
   if (error) {
     console.error("[outreach-responses] GET error:", error);
     return NextResponse.json({ error: "Failed to fetch responses" }, { status: 500 });
+  }
+
+  // Fetch the event and client details for distance calculation
+  const { data: eventData } = await supabase
+    .from("schedule_events")
+    .select("client_id, clients(address)")
+    .eq("id", eventId)
+    .eq("agency_id", agencyId)
+    .maybeSingle();
+
+  // Geocode client address once for distance calculations
+  let clientCoords = null;
+  if (eventData?.clients?.address) {
+    const clientAddress = eventData.clients.address;
+    if (clientAddress.street && clientAddress.city && clientAddress.state && clientAddress.zip) {
+      clientCoords = await geocodeAddress(clientAddress);
+    }
   }
 
   // Group attempts by caregiver to create a single response per person
@@ -101,6 +121,22 @@ export async function GET(request: NextRequest) {
       ? `${Math.round((respondedAt.getTime() - initiatedAt.getTime()) / 60000)} min`
       : "—";
 
+    // Calculate distance to client
+    let distanceString = null;
+    if (clientCoords && emp.address) {
+      const empAddress = emp.address;
+      if (empAddress.street && empAddress.city && empAddress.state && empAddress.zip) {
+        const empCoords = await geocodeAddress(empAddress);
+        if (empCoords) {
+          const distanceMiles = haversineDistance(
+            clientCoords.lat, clientCoords.lng,
+            empCoords.lat, empCoords.lng
+          );
+          distanceString = formatDistance(distanceMiles);
+        }
+      }
+    }
+
     mapped.push({
       id: emp.id,
       firstName,
@@ -110,7 +146,7 @@ export async function GET(request: NextRequest) {
       avatarColor: avatarColors[colorIdx % avatarColors.length],
       status: uiStatus,
       matchScore: null,
-      distance: null,
+      distance: distanceString,
       responseTime,
       availability: uiStatus === "accepted" ? "Available" : uiStatus === "declined" ? "Unavailable" : "Unknown",
       contactMethod,

@@ -9,6 +9,8 @@ import {
 import { defaultCoordinatorSetupValues } from "@/lib/ai/coordinator-schema";
 import { syncCoordinatorToRetell } from "@/lib/retell/coordinator-sync";
 import { createServerSupabaseServiceClient } from "@/lib/supabase/server";
+import { findUncoveredVacantShifts } from "@/lib/auto-scheduler/scan";
+import { triggerAutoCoverage } from "@/lib/auto-scheduler/trigger";
 
 function jsonResponse(body: unknown, status: number) {
   return NextResponse.json(body, { status });
@@ -77,6 +79,9 @@ function defaultRow(agencyId: string): CoordinatorConfigRow {
     ai_notify_scheduler: d.coverageWorkflow.aiCapabilities.notifyScheduler,
     assignment_mode: d.coverageWorkflow.assignmentMode,
 
+    // Auto Scheduler (default off, managed separately via toggle)
+    auto_scheduler_enabled: false,
+
     // Step 5: Escalations
     escalate_medical_emergency: d.escalationsNotifications.escalateToHuman.medicalEmergency,
     escalate_abuse_report: d.escalationsNotifications.escalateToHuman.abuseReport,
@@ -140,24 +145,81 @@ export async function GET(request: NextRequest) {
 /**
  * PATCH /api/ai/coordinator/config
  * Upsert the coordinator config and trigger Retell sync.
+ * Also supports partial updates (e.g. just { autoSchedulerEnabled: true }).
  */
 export async function PATCH(request: NextRequest) {
   try {
-    let body: unknown;
+    let body: any;
     try {
       body = await request.json();
     } catch {
       return errorResponse("Invalid JSON body", 400);
     }
 
+    const auth = await requireAuth(request);
+    if (isAuthError(auth)) return auth;
+    const { supabase, agencyId } = auth;
+
+    // Handle lightweight toggle update (autoSchedulerEnabled only)
+    if (typeof body.autoSchedulerEnabled === "boolean" && !body.lineRouting) {
+      const { error } = await supabase
+        .from("coordinator_config")
+        .update({
+          auto_scheduler_enabled: body.autoSchedulerEnabled,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("agency_id", agencyId);
+
+      if (error) {
+        console.error("Failed to update auto_scheduler_enabled:", error);
+        return errorResponse("Failed to update auto scheduler setting", 500);
+      }
+
+      // Auto-approve existing pending callout requests when enabling auto-scheduler
+      // and immediately trigger outreach for any vacant shifts
+      if (body.autoSchedulerEnabled) {
+        const serviceClient = createServerSupabaseServiceClient();
+        if (serviceClient) {
+          await serviceClient
+            .from("coverage_requests")
+            .update({ status: "approved" })
+            .eq("agency_id", agencyId)
+            .eq("status", "pending")
+            .in("request_type", ["cancel_shift", "callout"]);
+
+          // Immediately scan for vacant shifts and trigger auto-coverage
+          const uncovered = await findUncoveredVacantShifts(serviceClient, [agencyId]);
+          for (const shift of uncovered) {
+            triggerAutoCoverage({
+              agencyId: shift.agency_id,
+              eventId: shift.id,
+              supabase: serviceClient,
+            }).catch((err) =>
+              console.error(`[auto-scheduler] Toggle-on trigger failed for ${shift.id}:`, err)
+            );
+          }
+          if (uncovered.length > 0) {
+            console.log(`[auto-scheduler] Toggle-on: triggered ${uncovered.length} auto-coverage sessions for agency ${agencyId}`);
+          }
+        }
+      }
+
+      const { data: row } = await supabase
+        .from("coordinator_config")
+        .select("*")
+        .eq("agency_id", agencyId)
+        .single();
+
+      if (row) {
+        return jsonResponse({ data: mapCoordinatorConfigRowToApi(row as CoordinatorConfigRow) }, 200);
+      }
+      return jsonResponse({ data: { autoSchedulerEnabled: body.autoSchedulerEnabled } }, 200);
+    }
+
     const parsed = UpdateCoordinatorConfigSchema.safeParse(body);
     if (!parsed.success) {
       return errorResponse("Validation failed", 400, parsed.error.flatten());
     }
-
-    const auth = await requireAuth(request);
-    if (isAuthError(auth)) return auth;
-    const { supabase, agencyId } = auth;
 
     // Normalize phone numbers to E.164 before persisting
     const upsertRow = {

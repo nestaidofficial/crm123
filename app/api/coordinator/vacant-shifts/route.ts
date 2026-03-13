@@ -15,7 +15,7 @@ export async function GET(request: NextRequest) {
 
   const { data, error } = await supabase
     .from("schedule_events")
-    .select("*, clients(id, first_name, last_name)")
+    .select("*, clients(id, first_name, last_name, address)")
     .eq("agency_id", agencyId)
     .gt("start_at", new Date().toISOString())
     .or("caregiver_id.is.null,status.eq.cancelled")
@@ -40,6 +40,8 @@ export async function GET(request: NextRequest) {
     const clientName = row.clients
       ? `${row.clients.first_name ?? ""} ${row.clients.last_name ?? ""}`.trim()
       : row.title ?? "Unknown Client";
+
+    const clientCity = row.clients?.address?.city ?? null;
 
     const dateStr = startAt.toLocaleDateString("en-US", {
       month: "long",
@@ -69,6 +71,7 @@ export async function GET(request: NextRequest) {
       id: row.id,
       clientName,
       clientId: row.client_id,
+      clientCity,
       date: dateStr,
       time: timeStr,
       fullDateTime: `${dateStr} • ${timeStr}`,

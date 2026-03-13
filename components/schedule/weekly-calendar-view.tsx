@@ -1460,6 +1460,19 @@ export function WeeklyCalendarView({ onCreateShiftClick }: WeeklyCalendarViewPro
                   // Look up caregiver and client for avatar display (O(1) Map lookup)
                   const caregiver = event.caregiver_id ? employeeMap.get(event.caregiver_id) : undefined;
                   const client = event.client_id ? clientMap.get(event.client_id) : undefined;
+
+                  // Build display title dynamically from live store data so it updates
+                  // immediately when caregiver_id is cleared (e.g. after auto-scheduler removes them)
+                  const caregiverDisplayName = caregiver
+                    ? `${caregiver.firstName} ${caregiver.lastName}`.trim()
+                    : null;
+                  const clientDisplayName = client
+                    ? `${client.firstName} ${client.lastName}`.trim()
+                    : null;
+                  const derivedTitle = [caregiverDisplayName, clientDisplayName]
+                    .filter(Boolean)
+                    .join(" • ") || event.title || "Untitled Event";
+
                   const avatarParticipants = [
                     caregiver
                       ? {
@@ -1526,7 +1539,7 @@ export function WeeklyCalendarView({ onCreateShiftClick }: WeeklyCalendarViewPro
                       {isStacked ? (
                         // Compact view for stacked events
                         <div className="flex items-center justify-between truncate">
-                          <span className="font-medium truncate flex-1">{event.title || "Untitled Event"}</span>
+                          <span className="font-medium truncate flex-1">{derivedTitle}</span>
                           <span className="text-[10px] opacity-90 ml-2 whitespace-nowrap">
                             {isBeingDragged && previewTime
                               ? formatTime(previewTime.startTime)
@@ -1537,7 +1550,7 @@ export function WeeklyCalendarView({ onCreateShiftClick }: WeeklyCalendarViewPro
                       ) : (
                         // Full view for single events
                         <>
-                          <div className="font-medium">{event.title || "Untitled Event"}</div>
+                          <div className="font-medium">{derivedTitle}</div>
                           <div className="text-[10px] opacity-90">
                             {isBeingDragged && previewTime
                               ? `${formatTime(previewTime.startTime)} - ${formatTime(previewTime.endTime)}`
