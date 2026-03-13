@@ -106,8 +106,9 @@ export async function getAvailableCaregivers(
 
   // 6. Geocode client address for distance calculations
   let clientCoords = null;
-  if (shift.clients?.address) {
-    const clientAddress = shift.clients.address;
+  const client = Array.isArray(shift.clients) ? shift.clients[0] : shift.clients;
+  if (client?.address) {
+    const clientAddress = client.address;
     if (clientAddress.street && clientAddress.city && clientAddress.state && clientAddress.zip) {
       clientCoords = await geocodeAddress(clientAddress);
     }
