@@ -37,10 +37,18 @@ export async function POST(request: NextRequest) {
     const shiftDate: string = (toolInput.shift_date ?? "").trim();
     const shiftTime: string = (toolInput.shift_time ?? "").trim();
 
-    if (!caregiverFirstName || !shiftDate) {
+    const caregiverShortIdInput: string = normalizeShortId(toolInput.caregiver_short_id ?? "") ?? "";
+
+    if (!caregiverShortIdInput && !caregiverFirstName) {
       return NextResponse.json({
         result: "error",
-        message: "Missing required fields: caregiver_first_name and shift_date.",
+        message: "Either employee ID or caregiver name is required.",
+      });
+    }
+    if (!shiftDate) {
+      return NextResponse.json({
+        result: "error",
+        message: "Missing required field: shift_date.",
       });
     }
 
@@ -79,7 +87,7 @@ export async function POST(request: NextRequest) {
       coordConfig.auto_fill_shifts && coordConfig.assignment_mode === "auto-assign";
 
     // ── Find caregiver ───────────────────────────────────────────
-    const caregiverShortId: string = normalizeShortId(toolInput.caregiver_short_id ?? "") ?? "";
+    const caregiverShortId = caregiverShortIdInput;
     let employees: { id: string; first_name: string; last_name: string; short_id?: string }[] | null = null;
 
     // Try exact short_id lookup first
@@ -141,10 +149,13 @@ export async function POST(request: NextRequest) {
     }
 
     if (!employees || employees.length === 0) {
-      await logToSyncLog(supabase, agencyId, callId, "not_found", { caregiverFirstName, caregiverLastName });
+      await logToSyncLog(supabase, agencyId, callId, "not_found", { caregiverShortId, caregiverFirstName, caregiverLastName });
+      const identifier = caregiverShortId
+        ? `employee ID ${caregiverShortId}`
+        : `${caregiverFirstName}${caregiverLastName ? " " + caregiverLastName : ""}`;
       return NextResponse.json({
         result: "not_found",
-        message: `No caregiver named ${caregiverFirstName}${caregiverLastName ? " " + caregiverLastName : ""} found.`,
+        message: `No caregiver found with ${identifier}.`,
       });
     }
 

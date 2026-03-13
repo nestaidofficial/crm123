@@ -198,7 +198,7 @@ When passing dates to tools, always convert to YYYY-MM-DD format.
               "The shift start time in HH:MM 24-hour format (e.g. 09:00). Optional but helps disambiguate if multiple shifts.",
           },
         },
-        required: ["caregiver_first_name", "shift_date"],
+        required: ["shift_date"],
       },
     });
 
@@ -258,7 +258,7 @@ When passing dates to tools, always convert to YYYY-MM-DD format.
             description: "Brief reason for the schedule change.",
           },
         },
-        required: ["caregiver_first_name", "current_shift_date"],
+        required: ["current_shift_date"],
       },
     });
   }
@@ -340,7 +340,12 @@ When passing dates to tools, always convert to YYYY-MM-DD format.
     `The caller is a caregiver calling out of a shift.`,
     `Acknowledge their call: "I understand. Let me get some details so we can arrange coverage."`,
     ``,
-    `IMPORTANT — Employee ID first: Always ask for the employee ID before the name. The ID starts with E followed by digits (e.g. E-1005). Recognize spoken variants: "E one zero zero five", "E ten oh five", "my ID is 1005", "e1005" all mean E-1005. If they provide an employee ID, the name is optional — you can skip it.`,
+    `IMPORTANT — Employee ID is REQUIRED: You MUST collect the employee ID before anything else.`,
+    `The ID starts with E followed by digits (e.g. E-1005). Recognize spoken variants:`,
+    `"E one zero zero five", "E ten oh five", "my ID is 1005", "e1005" all mean E-1005.`,
+    `Always read the ID back for confirmation: "Just to confirm, that's E-1005?"`,
+    `If they provide an employee ID, skip the name question entirely.`,
+    `Only ask for the name if they say they don't know their ID.`,
     ``,
     `Collect the following information one question at a time:`,
     ...enabledIntakeFields.map((f, i) => `${i + 1}. ${f.label}: "${f.prompt}"`),
@@ -351,7 +356,7 @@ When passing dates to tools, always convert to YYYY-MM-DD format.
   if (row.auto_fill_shifts) {
     calloutIntakeLines.push(
       ``,
-      `Once you have the caregiver's name and shift date, first call get_current_date to confirm today's date, then use the cancel_shift tool to cancel the shift.`,
+      `Once you have the caregiver's employee ID (or name as fallback) and shift date, first call get_current_date to confirm today's date, then use the cancel_shift tool to cancel the shift.`,
       `If the caller provides their employee ID (e.g. E-1001), pass it as caregiver_short_id for an exact lookup.`,
       `Pass the caregiver's first name, last name (if provided), shift date (YYYY-MM-DD), and shift time (HH:MM 24h, if known).`,
       ``,
@@ -384,7 +389,12 @@ When passing dates to tools, always convert to YYYY-MM-DD format.
     `The caller has a schedule change or reschedule request.`,
     `Acknowledge: "I can help with that. Let me get the details."`,
     ``,
-    `IMPORTANT — Employee ID first: Always ask for the employee ID before the name. The ID starts with E followed by digits (e.g. E-1005). Recognize spoken variants: "E one zero zero five", "E ten oh five", "my ID is 1005", "e1005" all mean E-1005. If they provide an employee ID, the name is optional.`,
+    `IMPORTANT — Employee ID is REQUIRED: You MUST collect the employee ID before anything else.`,
+    `The ID starts with E followed by digits (e.g. E-1005). Recognize spoken variants:`,
+    `"E one zero zero five", "E ten oh five", "my ID is 1005", "e1005" all mean E-1005.`,
+    `Always read the ID back for confirmation: "Just to confirm, that's E-1005?"`,
+    `If they provide an employee ID, skip the name question entirely.`,
+    `Only ask for the name if they say they don't know their ID.`,
     ``,
     `Collect:`,
     `1. Their employee ID (e.g. E-1005)`,
@@ -399,7 +409,7 @@ When passing dates to tools, always convert to YYYY-MM-DD format.
   if (row.auto_fill_shifts) {
     scheduleChangeLines.push(
       ``,
-      `Once you have the caregiver's name, current shift date, and the new date/time, first call get_current_date to confirm today's date, then:`,
+      `Once you have the caregiver's employee ID (or name as fallback), current shift date, and the new date/time, first call get_current_date to confirm today's date, then:`,
       `If the caller provides their employee ID (e.g. E-1001), pass it as caregiver_short_id for an exact lookup.`,
       `- If they want to CANCEL the shift → use the cancel_shift tool`,
       `- If they want to RESCHEDULE (change date or time) → use the change_schedule tool`,

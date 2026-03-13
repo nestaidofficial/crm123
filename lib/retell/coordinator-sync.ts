@@ -55,6 +55,45 @@ export async function syncCoordinatorToRetell(
   const agentName = "AI Coverage Coordinator";
   const llmConfig = buildCoordinatorLlmConfig(normalizedRow);
 
+  const postCallAnalysisData = [
+    {
+      name: "call_type",
+      type: "enum" as any,
+      description: "The type of scheduling call",
+      choices: ["caregiver_callout", "schedule_change", "reschedule", "missed_visit", "availability_update", "open_shift_question", "same_day_coverage", "escalation", "other"],
+    },
+    {
+      name: "caregiver_name",
+      type: "string" as any,
+      description: "The caregiver's name if provided",
+    },
+    {
+      name: "caregiver_short_id",
+      type: "string" as any,
+      description: "The caregiver's employee ID if provided (e.g. E-1005). Extract exactly as spoken.",
+    },
+    {
+      name: "client_name",
+      type: "string" as any,
+      description: "The client's name if mentioned",
+    },
+    {
+      name: "shift_date",
+      type: "string" as any,
+      description: "The affected shift date if mentioned",
+    },
+    {
+      name: "call_summary",
+      type: "string" as any,
+      description: "Brief summary of what was discussed and any action items",
+    },
+    {
+      name: "coverage_needed",
+      type: "boolean" as any,
+      description: "Whether shift coverage is needed",
+    },
+  ];
+
   try {
     // ── Step 1: Create or update the LLM ───────────────────────────
     let llmId = row.retell_llm_id;
@@ -150,39 +189,7 @@ export async function syncCoordinatorToRetell(
         enable_voicemail_detection: true,
         webhook_url: webhookUrl,
         voicemail_message: "Hi, you've reached the scheduling and coverage line. We're unable to take your call right now. Please leave a message with your name and details, and we'll get back to you as soon as possible.",
-        post_call_analysis_data: [
-          {
-            name: "call_type",
-            type: "enum" as any,
-            description: "The type of scheduling call",
-            choices: ["caregiver_callout", "schedule_change", "reschedule", "missed_visit", "availability_update", "open_shift_question", "same_day_coverage", "escalation", "other"],
-          },
-          {
-            name: "caregiver_name",
-            type: "string" as any,
-            description: "The caregiver's name if provided",
-          },
-          {
-            name: "client_name",
-            type: "string" as any,
-            description: "The client's name if mentioned",
-          },
-          {
-            name: "shift_date",
-            type: "string" as any,
-            description: "The affected shift date if mentioned",
-          },
-          {
-            name: "call_summary",
-            type: "string" as any,
-            description: "Brief summary of what was discussed and any action items",
-          },
-          {
-            name: "coverage_needed",
-            type: "boolean" as any,
-            description: "Whether shift coverage is needed",
-          },
-        ],
+        post_call_analysis_data: postCallAnalysisData,
       } as any);
       agentId = agent.agent_id;
 
@@ -203,6 +210,7 @@ export async function syncCoordinatorToRetell(
         voice_id: "11labs-Adrian",
         webhook_url: webhookUrl,
         voicemail_message: "Hi, you've reached the scheduling and coverage line. We're unable to take your call right now. Please leave a message with your name and details, and we'll get back to you as soon as possible.",
+        post_call_analysis_data: postCallAnalysisData,
       } as any);
 
       await serviceSupabase.from("retell_sync_log").insert({
