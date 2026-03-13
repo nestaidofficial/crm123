@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAuth, isAuthError } from "@/lib/api-auth";
+import { createServerSupabaseServiceClient } from "@/lib/supabase/server";
 import { normalizeShortId } from "@/lib/utils";
 
 /**
@@ -15,8 +16,14 @@ export async function PATCH(
   const auth = await requireAuth(request);
   if (isAuthError(auth)) return auth;
 
-  const { supabase, agencyId, userId } = auth;
+  const { agencyId, userId } = auth;
   const { id } = await params;
+
+  // Use service client to bypass RLS for admin approval actions
+  const supabase = createServerSupabaseServiceClient();
+  if (!supabase) {
+    return NextResponse.json({ error: "Database not configured" }, { status: 500 });
+  }
 
   const body = await request.json();
   const action: string = body.action;
