@@ -1,7 +1,6 @@
 "use client";
 
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { Mail, Phone } from "lucide-react";
 
 interface AdminContactProps {
   adminName: string;
@@ -13,8 +12,6 @@ interface AdminContactProps {
 const AdminContact = ({
   adminName,
   email,
-  supportContact,
-  onSupportContactChange,
 }: AdminContactProps) => {
   return (
     <div className="grid grid-cols-1 gap-10 lg:grid-cols-3">
@@ -36,17 +33,24 @@ const AdminContact = ({
           </div>
         </div>
 
-        <div className="space-y-1.5">
-          <Label htmlFor="support-contact" className="gap-1">
-            Support Contact{" "}
-            <span className="text-muted-foreground">(optional)</span>
-          </Label>
-          <Input
-            id="support-contact"
-            value={supportContact}
-            onChange={(e) => onSupportContactChange(e.target.value)}
-            placeholder="support@agency.com"
-          />
+        <div className="space-y-2">
+          <p className="text-muted-foreground text-sm">Support Contact</p>
+          <div className="space-y-2">
+            <a
+              href="mailto:rahul@nestaid.us"
+              className="flex items-center gap-2 text-[14px] text-foreground hover:text-primary-500 transition-colors"
+            >
+              <Mail className="h-4 w-4 text-muted-foreground" />
+              rahul@nestaid.us
+            </a>
+            <a
+              href="tel:+14129530622"
+              className="flex items-center gap-2 text-[14px] text-foreground hover:text-primary-500 transition-colors"
+            >
+              <Phone className="h-4 w-4 text-muted-foreground" />
+              +1 (412) 953-0622
+            </a>
+          </div>
         </div>
       </div>
     </div>
