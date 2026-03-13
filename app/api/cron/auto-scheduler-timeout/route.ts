@@ -27,7 +27,7 @@ export async function GET(request: NextRequest) {
   // Find expired sessions
   const { data: expiredSessions, error } = await supabase
     .from("auto_coverage_sessions")
-    .select("*, employees!auto_coverage_sessions_original_caregiver_id_fkey!left(first_name, last_name, phone)")
+    .select("*, employees!left(first_name, last_name, phone)")
     .eq("status", "outreach")
     .lt("deadline_at", new Date().toISOString());
 
