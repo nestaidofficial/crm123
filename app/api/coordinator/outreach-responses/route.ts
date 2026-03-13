@@ -44,8 +44,11 @@ export async function GET(request: NextRequest) {
 
   // Geocode client address once for distance calculations
   let clientCoords = null;
-  if (eventData?.clients?.address) {
-    const clientAddress = eventData.clients.address;
+  const client = Array.isArray(eventData?.clients)
+    ? eventData.clients[0]
+    : eventData?.clients;
+  if (client?.address) {
+    const clientAddress = client.address;
     if (clientAddress.street && clientAddress.city && clientAddress.state && clientAddress.zip) {
       clientCoords = await geocodeAddress(clientAddress);
     }
