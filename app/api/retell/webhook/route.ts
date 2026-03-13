@@ -279,6 +279,8 @@ async function createRequestFromAnalysis(
       }
     }
 
+    const normalizedShortId = rawShortId ? normalizeShortId(rawShortId) : null;
+
     await supabase.from("coverage_requests").insert({
       agency_id: agencyId,
       request_type: requestType,
@@ -293,6 +295,7 @@ async function createRequestFromAnalysis(
         call_type: callType,
         client_name: clientName,
         coverage_needed: coverageNeeded,
+        caregiver_short_id: normalizedShortId,
         source: "post_call_analysis",
       },
     });

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAuth, isAuthError } from "@/lib/api-auth";
+import { normalizeShortId } from "@/lib/utils";
 
 /**
  * PATCH /api/coordinator-requests/[id]
@@ -138,6 +139,26 @@ export async function PATCH(
         if (emp) caregiver = emp;
       }
 
+      // Fall back to short_id lookup from action_payload
+      if (!caregiver) {
+        const actionPayload = reqRow.action_payload as Record<string, unknown> | null;
+        const rawShortId = actionPayload?.caregiver_short_id as string | undefined;
+        if (rawShortId) {
+          const normalized = normalizeShortId(rawShortId);
+          if (normalized) {
+            const { data: emp } = await supabase
+              .from("employees")
+              .select("id, first_name, last_name")
+              .eq("agency_id", agencyId)
+              .eq("short_id", normalized)
+              .eq("status", "active")
+              .eq("is_archived", false)
+              .maybeSingle();
+            if (emp) caregiver = emp;
+          }
+        }
+      }
+
       // Fall back to name-based lookup
       if (!caregiver && reqRow.caregiver_name) {
         const nameParts = (reqRow.caregiver_name as string).trim().split(/\s+/);
@@ -184,7 +205,7 @@ export async function PATCH(
           .from("schedule_events")
           .select("id, status, start_at")
           .eq("agency_id", agencyId)
-          .eq("employee_id", caregiver.id)
+          .eq("caregiver_id", caregiver.id)
           .gte("start_at", dayStart)
           .lte("start_at", dayEnd)
           .in("status", ["scheduled", "confirmed"]);
@@ -242,6 +263,26 @@ export async function PATCH(
         if (emp) caregiver = emp;
       }
 
+      // Fall back to short_id lookup from action_payload
+      if (!caregiver) {
+        const actionPayload = reqRow.action_payload as Record<string, unknown> | null;
+        const rawShortId = actionPayload?.caregiver_short_id as string | undefined;
+        if (rawShortId) {
+          const normalized = normalizeShortId(rawShortId);
+          if (normalized) {
+            const { data: emp } = await supabase
+              .from("employees")
+              .select("id, first_name, last_name")
+              .eq("agency_id", agencyId)
+              .eq("short_id", normalized)
+              .eq("status", "active")
+              .eq("is_archived", false)
+              .maybeSingle();
+            if (emp) caregiver = emp;
+          }
+        }
+      }
+
       // Fall back to name-based lookup
       if (!caregiver && reqRow.caregiver_name) {
         const nameParts = (reqRow.caregiver_name as string).trim().split(/\s+/);
@@ -287,7 +328,7 @@ export async function PATCH(
           .from("schedule_events")
           .select("id, status, start_at, end_at")
           .eq("agency_id", agencyId)
-          .eq("employee_id", caregiver.id)
+          .eq("caregiver_id", caregiver.id)
           .gte("start_at", dayStart)
           .lte("start_at", dayEnd)
           .in("status", ["scheduled", "confirmed"]);
