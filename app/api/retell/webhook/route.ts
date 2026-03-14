@@ -263,21 +263,25 @@ async function createRequestFromAnalysis(
     const callSummary = (custom.call_summary as string) || (analysis.summary as string) || null;
     const coverageNeeded = custom.coverage_needed ?? null;
 
-    // Resolve caregiver_id from short ID if available
+    // Resolve caregiver_id (and name) from short ID if available
     const rawShortId = (custom.caregiver_short_id as string) || null;
     let caregiverId: string | null = null;
+    let resolvedCaregiverName: string | null = null;
 
     if (rawShortId) {
       const normalized = normalizeShortId(rawShortId);
       if (normalized) {
         const { data: emp } = await supabase
           .from("employees")
-          .select("id")
+          .select("id, first_name, last_name")
           .eq("agency_id", agencyId)
           .eq("short_id", normalized)
           .eq("is_archived", false)
           .maybeSingle();
-        if (emp) caregiverId = emp.id;
+        if (emp) {
+          caregiverId = emp.id;
+          resolvedCaregiverName = `${emp.first_name} ${emp.last_name}`;
+        }
       }
     }
 
@@ -296,7 +300,7 @@ async function createRequestFromAnalysis(
     await supabase.from("coverage_requests").insert({
       agency_id: agencyId,
       request_type: requestType,
-      caregiver_name: caregiverName,
+      caregiver_name: resolvedCaregiverName || caregiverName,
       caregiver_id: caregiverId,
       client_name: clientName,
       shift_date: shiftDate,
