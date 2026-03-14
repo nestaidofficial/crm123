@@ -692,6 +692,38 @@ export default function CoordinatorPage() {
     }
   }, [autoSchedulerEnabled]);
 
+  // Periodic auto-coverage scan when auto-scheduler is enabled
+  const runPeriodicAutoCoverageScan = useCallback(async () => {
+    if (!autoSchedulerEnabled || !agencyId) return;
+    try {
+      const res = await apiFetch("/api/coordinator/auto-coverage-scan", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+      });
+      if (res.ok) {
+        const { data } = await res.json();
+        if (data?.triggered > 0) {
+          console.log(`[auto-scheduler] Periodic scan triggered ${data.triggered} auto-coverage sessions`);
+        }
+      }
+    } catch (err) {
+      console.error("[auto-scheduler] Periodic scan failed:", err);
+    }
+  }, [autoSchedulerEnabled, agencyId]);
+
+  // Set up periodic scanning when auto-scheduler is enabled
+  useEffect(() => {
+    if (!autoSchedulerEnabled) return;
+    
+    // Run initial scan immediately
+    runPeriodicAutoCoverageScan();
+    
+    // Set up 2-minute interval
+    const intervalId = setInterval(runPeriodicAutoCoverageScan, 2 * 60 * 1000);
+    
+    return () => clearInterval(intervalId);
+  }, [autoSchedulerEnabled, runPeriodicAutoCoverageScan]);
+
   useSupabaseRealtimeMulti("schedule_events", {
     onInsert: useCallback((record: any) => {
       handleScheduleChange();

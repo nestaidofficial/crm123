@@ -43,11 +43,22 @@ export async function findUncoveredVacantShifts(
 
   // 2. Exclude shifts that already have an active auto_coverage_session
   const shiftIds = vacantShifts.map((s) => s.id);
+  const now = new Date().toISOString();
+  
+  // First, expire any stale outreach sessions (past their deadline)
+  await supabase
+    .from("auto_coverage_sessions")
+    .update({ status: "expired", updated_at: now })
+    .in("event_id", shiftIds)
+    .eq("status", "outreach")
+    .lt("deadline_at", now);
+
+  // Then find truly active sessions: filled OR outreach with future deadline
   const { data: activeSessions } = await supabase
     .from("auto_coverage_sessions")
     .select("event_id")
     .in("event_id", shiftIds)
-    .in("status", ["outreach", "filled"]);
+    .or(`status.eq.filled,and(status.eq.outreach,deadline_at.gt.${now})`);
 
   const coveredIds = new Set((activeSessions ?? []).map((s) => s.event_id));
   return vacantShifts.filter((s) => !coveredIds.has(s.id));

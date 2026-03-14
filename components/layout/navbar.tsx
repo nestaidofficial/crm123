@@ -104,7 +104,7 @@ function NavIconButton({
 }
 
 export function Navbar() {
-  const { user, currentRole, memberships, currentAgencyId } = useAuthStore();
+  const { user, currentRole, memberships, currentAgencyId, signOut } = useAuthStore();
   const router = useRouter();
   const [query, setQuery] = useState("");
   const [isFocused, setIsFocused] = useState(false);
@@ -277,7 +277,13 @@ export function Navbar() {
                 </Link>
               </DropdownMenuItem>
               <DropdownMenuSeparator className="my-1.5 bg-neutral-100" />
-              <DropdownMenuItem className="rounded-md px-2 py-2 text-[13px] font-medium cursor-pointer focus:bg-red-50 text-red-600 focus:text-red-700">
+              <DropdownMenuItem 
+                className="rounded-md px-2 py-2 text-[13px] font-medium cursor-pointer focus:bg-red-50 text-red-600 focus:text-red-700"
+                onClick={async () => {
+                  await signOut();
+                  router.push("/login");
+                }}
+              >
                 <div className="flex items-center gap-3">
                   <div className="flex h-8 w-8 items-center justify-center rounded-md bg-red-50">
                     <svg className="h-4 w-4 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
