@@ -41,10 +41,10 @@ export async function POST(request: NextRequest) {
 
     const caregiverShortIdInput: string = normalizeShortId(toolInput.caregiver_short_id ?? "") ?? "";
 
-    if (!caregiverShortIdInput && !caregiverFirstName) {
+    if (!caregiverShortIdInput) {
       return NextResponse.json({
-        result: "error",
-        message: "Either employee ID or caregiver name is required.",
+        result: "needs_id",
+        message: "I need the employee ID to proceed. Could you please provide your employee ID number?",
       });
     }
     if (!currentShiftDate) {
