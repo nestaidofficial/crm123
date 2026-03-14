@@ -321,55 +321,62 @@ async function createRequestFromAnalysis(
     // If auto-approved callout, find and vacate the shift + trigger outreach
     if (autoApprove && caregiverId && shiftDate) {
       try {
-        // Find the shift to vacate
-        const shiftStart = new Date(shiftDate);
-        const dayStart = new Date(shiftStart);
-        dayStart.setHours(0, 0, 0, 0);
-        const dayEnd = new Date(shiftStart);
-        dayEnd.setHours(23, 59, 59, 999);
+        // Find the shift(s) to vacate
+        const dateStart = `${shiftDate}T00:00:00`;
+        const dateEnd = `${shiftDate}T23:59:59`;
 
-        const { data: targetShift } = await supabase
+        const { data: shifts } = await supabase
           .from("schedule_events")
           .select("id")
           .eq("agency_id", agencyId)
           .eq("caregiver_id", caregiverId)
-          .gte("start_at", dayStart.toISOString())
-          .lte("start_at", dayEnd.toISOString())
-          .maybeSingle();
+          .in("status", ["scheduled", "confirmed"])
+          .gte("start_at", dateStart)
+          .lte("start_at", dateEnd)
+          .order("start_at", { ascending: true });
 
-        if (targetShift) {
-          // Vacate the shift
+        const targetShift = shifts?.[0] ?? null;
+
+        if (shifts && shifts.length > 0) {
+          // Vacate ALL shifts for this caregiver on this date (callout = unavailable all day)
+          const shiftIds = shifts.map((s) => s.id);
+
           await supabase
             .from("schedule_events")
             .update({ caregiver_id: null, is_open_shift: true })
-            .eq("id", targetShift.id);
+            .in("id", shiftIds);
 
-          // Add audit log
-          await supabase.from("schedule_audit_log").insert({
-            event_id: targetShift.id,
-            agency_id: agencyId,
-            action: "caregiver_removed",
-            field_changed: "caregiver_id",
-            old_value: JSON.stringify({ caregiver_id: caregiverId }),
-            new_value: JSON.stringify({ caregiver_id: null }),
-            actor_id: null,
-          });
+          // Add audit log for each shift
+          await supabase.from("schedule_audit_log").insert(
+            shiftIds.map((sid) => ({
+              event_id: sid,
+              agency_id: agencyId,
+              action: "caregiver_removed",
+              field_changed: "caregiver_id",
+              old_value: JSON.stringify({ caregiver_id: caregiverId }),
+              new_value: JSON.stringify({ caregiver_id: null }),
+              actor_id: null,
+              notes: "Auto-approved callout via post-call analysis",
+            }))
+          );
 
-          // Trigger auto-coverage
+          // Trigger auto-coverage for each vacated shift
           const serviceClient = createServerSupabaseServiceClient();
           if (serviceClient) {
-            triggerAutoCoverage({
-              agencyId,
-              eventId: targetShift.id,
-              originalCaregiverId: caregiverId,
-              originalCallId: callId,
-              supabase: serviceClient,
-            }).catch((err) => {
-              console.error("[Retell] Auto-coverage trigger failed:", err);
-            });
+            for (const sid of shiftIds) {
+              triggerAutoCoverage({
+                agencyId,
+                eventId: sid,
+                originalCaregiverId: caregiverId,
+                originalCallId: callId,
+                supabase: serviceClient,
+              }).catch((err) => {
+                console.error(`[Retell] Auto-coverage trigger failed for shift ${sid}:`, err);
+              });
+            }
           }
 
-          console.log(`[Retell] Auto-approved callout: vacated shift ${targetShift.id} and triggered coverage`);
+          console.log(`[Retell] Auto-approved callout: vacated ${shiftIds.length} shift(s) [${shiftIds.join(", ")}] and triggered coverage`);
         } else {
           console.warn(`[Retell] Auto-approved callout but could not find shift for caregiver ${caregiverId} on ${shiftDate}`);
         }
