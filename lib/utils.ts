@@ -11,6 +11,10 @@ export function cn(...inputs: ClassValue[]) {
  */
 export function normalizeShortId(raw: string): string | null {
   const cleaned = raw.replace(/[\s\-\u2013\u2014]+/g, "").toUpperCase();
+  // If caller gives bare digits like "1005", assume employee prefix "E"
+  if (/^\d{1,6}$/.test(cleaned)) {
+    return `E-${cleaned}`;
+  }
   const match = cleaned.match(/^([EC])(.+)$/);
   if (!match) return null;
   const prefix = match[1];

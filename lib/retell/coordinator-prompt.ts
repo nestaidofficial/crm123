@@ -165,7 +165,7 @@ When passing dates to tools, always convert to YYYY-MM-DD format.
       type: "custom",
       name: "cancel_shift",
       description:
-        "Cancel a caregiver's upcoming shift in the schedule. Use this when a caregiver calls out and you have collected their name and shift date. Returns a confirmation message to relay to the caller.",
+        "Cancel a caregiver's upcoming shift in the schedule. Use this when a caregiver calls out and you have collected their employee ID and shift date. Returns a confirmation message to relay to the caller.",
       url: `${appUrl}/api/retell/tools/cancel-shift`,
       speak_during_execution: true,
       execution_message_description:
@@ -176,16 +176,16 @@ When passing dates to tools, always convert to YYYY-MM-DD format.
           caregiver_short_id: {
             type: "string",
             description:
-              "Employee ID (e.g. E-1001). If provided, used for exact lookup instead of name.",
+              "Employee ID (REQUIRED — e.g. E-1001, 1005). Always pass this. If the caller only gave digits like '1005', pass '1005' — the system will add the E prefix.",
           },
           caregiver_first_name: {
             type: "string",
-            description: "The caregiver's first name",
+            description: "The caregiver's first name (optional, for display purposes)",
           },
           caregiver_last_name: {
             type: "string",
             description:
-              "The caregiver's last name (if provided — ask if multiple matches)",
+              "The caregiver's last name (optional)",
           },
           shift_date: {
             type: "string",
@@ -198,7 +198,7 @@ When passing dates to tools, always convert to YYYY-MM-DD format.
               "The shift start time in HH:MM 24-hour format (e.g. 09:00). Optional but helps disambiguate if multiple shifts.",
           },
         },
-        required: ["shift_date"],
+        required: ["caregiver_short_id", "shift_date"],
       },
     });
 
@@ -206,7 +206,7 @@ When passing dates to tools, always convert to YYYY-MM-DD format.
       type: "custom",
       name: "change_schedule",
       description:
-        "Reschedule a caregiver's shift to a new date and/or time. Use this when a caller requests a schedule change and you have collected the caregiver name, current shift date, and the new date/time. Returns a confirmation message to relay to the caller.",
+        "Reschedule a caregiver's shift to a new date and/or time. Use this when a caller requests a schedule change and you have collected the caregiver's employee ID, current shift date, and the new date/time. Returns a confirmation message to relay to the caller.",
       url: `${appUrl}/api/retell/tools/change-schedule`,
       speak_during_execution: true,
       execution_message_description:
@@ -217,16 +217,16 @@ When passing dates to tools, always convert to YYYY-MM-DD format.
           caregiver_short_id: {
             type: "string",
             description:
-              "Employee ID (e.g. E-1001). If provided, used for exact lookup instead of name.",
+              "Employee ID (REQUIRED — e.g. E-1001, 1005). Always pass this. If the caller only gave digits like '1005', pass '1005' — the system will add the E prefix.",
           },
           caregiver_first_name: {
             type: "string",
-            description: "The caregiver's first name",
+            description: "The caregiver's first name (optional, for display purposes)",
           },
           caregiver_last_name: {
             type: "string",
             description:
-              "The caregiver's last name (if provided — ask if multiple matches)",
+              "The caregiver's last name (optional)",
           },
           current_shift_date: {
             type: "string",
@@ -258,7 +258,7 @@ When passing dates to tools, always convert to YYYY-MM-DD format.
             description: "Brief reason for the schedule change.",
           },
         },
-        required: ["current_shift_date"],
+        required: ["caregiver_short_id", "current_shift_date"],
       },
     });
   }
@@ -367,11 +367,12 @@ When passing dates to tools, always convert to YYYY-MM-DD format.
   if (row.auto_fill_shifts) {
     calloutIntakeLines.push(
       ``,
-      `Once you have the caregiver's employee ID (or name as fallback) and shift date, first call get_current_date to confirm today's date, then use the cancel_shift tool to cancel the shift.`,
-      `If the caller provides their employee ID (e.g. E-1001), pass it as caregiver_short_id for an exact lookup.`,
-      `Pass the caregiver's first name, last name (if provided), shift date (YYYY-MM-DD), and shift time (HH:MM 24h, if known).`,
+      `Once you have the caregiver's employee ID and shift date, first call get_current_date to confirm today's date, then use the cancel_shift tool.`,
+      `Always pass caregiver_short_id — even if they said bare digits like "1005", pass "1005" and the system handles the rest.`,
+      `Also pass first name, last name (if provided), shift date (YYYY-MM-DD), and shift time (HH:MM 24h, if known).`,
       ``,
       `After the tool returns:`,
+      `- If result is "needs_id": the employee ID is missing or invalid — ask the caller for their employee ID and try again.`,
       `- If result is "success": relay the confirmation message to the caller exactly as returned (it may say the shift was cancelled, or that the team will review — just pass along the message).`,
       `- If result is "multiple_matches": ask for the last name and call the tool again.`,
       `- If result is "not_found" or "no_shift": let them know, and say "I've noted the details — the scheduling team will follow up."`,
@@ -431,13 +432,14 @@ When passing dates to tools, always convert to YYYY-MM-DD format.
   if (row.auto_fill_shifts) {
     scheduleChangeLines.push(
       ``,
-      `Once you have the caregiver's employee ID (or name as fallback), current shift date, and the new date/time, first call get_current_date to confirm today's date, then:`,
-      `If the caller provides their employee ID (e.g. E-1001), pass it as caregiver_short_id for an exact lookup.`,
+      `Once you have the caregiver's employee ID, current shift date, and the new date/time, first call get_current_date to confirm today's date, then:`,
+      `Always pass caregiver_short_id — even bare digits like "1005" are fine, the system handles the rest.`,
       `- If they want to CANCEL the shift → use the cancel_shift tool`,
       `- If they want to RESCHEDULE (change date or time) → use the change_schedule tool`,
-      `  Pass: caregiver_short_id (if known), caregiver_first_name, caregiver_last_name (if known), current_shift_date (YYYY-MM-DD), current_shift_time (HH:MM 24h, if known), new_date (YYYY-MM-DD), new_start_time (HH:MM 24h), new_end_time (HH:MM 24h, optional), reason`,
+      `  Pass: caregiver_short_id, caregiver_first_name (optional), caregiver_last_name (optional), current_shift_date (YYYY-MM-DD), current_shift_time (HH:MM 24h, if known), new_date (YYYY-MM-DD), new_start_time (HH:MM 24h), new_end_time (HH:MM 24h, optional), reason`,
       ``,
       `After the tool returns:`,
+      `- If result is "needs_id": the employee ID is missing or invalid — ask the caller for their employee ID and try again.`,
       `- If result is "success": relay the confirmation message to the caller exactly as returned.`,
       `- If result is "multiple_matches": ask for the last name and call the tool again.`,
       `- If result is "not_found" or "no_shift": let them know, and say "I've noted the details — the scheduling team will follow up."`,

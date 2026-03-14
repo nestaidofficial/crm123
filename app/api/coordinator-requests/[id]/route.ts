@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireAuth, isAuthError } from "@/lib/api-auth";
 import { createServerSupabaseServiceClient } from "@/lib/supabase/server";
 import { normalizeShortId } from "@/lib/utils";
+import { triggerAutoCoverage } from "@/lib/auto-scheduler/trigger";
 
 /**
  * PATCH /api/coordinator-requests/[id]
@@ -114,7 +115,7 @@ export async function PATCH(
         // Remove caregiver from shift (makes it a vacant/open shift needing coverage)
         const { error: updateErr } = await supabase
           .from("schedule_events")
-          .update({ caregiver_id: null })
+          .update({ caregiver_id: null, is_open_shift: true })
           .eq("id", eventId);
 
         if (updateErr) {
@@ -131,6 +132,24 @@ export async function PATCH(
             new_value: JSON.stringify({ caregiver_id: null }),
             actor_id: userId,
           });
+
+          // Auto-trigger coverage outreach if auto_scheduler is enabled
+          const { data: coordConfig } = await supabase
+            .from("coordinator_config")
+            .select("auto_scheduler_enabled")
+            .eq("agency_id", agencyId)
+            .maybeSingle();
+
+          if (coordConfig?.auto_scheduler_enabled) {
+            triggerAutoCoverage({
+              agencyId,
+              eventId,
+              originalCaregiverId: evt.caregiver_id,
+              supabase,
+            }).catch((err) =>
+              console.error("[coordinator-requests] Auto-coverage trigger failed:", err)
+            );
+          }
         }
       }
     }
@@ -232,11 +251,18 @@ export async function PATCH(
         } else if (!shifts || shifts.length === 0) {
           warning = `No scheduled shift found for ${caregiver.first_name} ${caregiver.last_name} on ${shiftDate}. Request approved but no schedule change made.`;
         } else {
+          // Check if auto-scheduler is enabled for this agency
+          const { data: coordConfigForUnlinked } = await supabase
+            .from("coordinator_config")
+            .select("auto_scheduler_enabled")
+            .eq("agency_id", agencyId)
+            .maybeSingle();
+
           // Remove caregiver from matching shifts (makes them vacant/open for coverage)
           for (const shift of shifts) {
             const { error: updateErr } = await supabase
               .from("schedule_events")
-              .update({ caregiver_id: null })
+              .update({ caregiver_id: null, is_open_shift: true })
               .eq("id", shift.id);
 
             if (updateErr) {
@@ -255,6 +281,18 @@ export async function PATCH(
               new_value: JSON.stringify({ caregiver_id: null }),
               actor_id: userId,
             });
+
+            // Auto-trigger coverage outreach
+            if (coordConfigForUnlinked?.auto_scheduler_enabled) {
+              triggerAutoCoverage({
+                agencyId,
+                eventId: shift.id,
+                originalCaregiverId: caregiver.id,
+                supabase,
+              }).catch((err) =>
+                console.error("[coordinator-requests] Auto-coverage trigger failed:", err)
+              );
+            }
           }
         }
       }
