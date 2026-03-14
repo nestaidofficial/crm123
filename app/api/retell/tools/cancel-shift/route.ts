@@ -75,7 +75,7 @@ export async function POST(request: NextRequest) {
 
     const { data: coordConfig } = await supabase
       .from("coordinator_config")
-      .select("agency_id, auto_fill_shifts, assignment_mode, auto_scheduler_enabled")
+      .select("agency_id, auto_fill_shifts, assignment_mode, auto_scheduler_enabled, coverage_line")
       .eq("retell_agent_id", agentId)
       .maybeSingle();
 
@@ -274,6 +274,7 @@ export async function POST(request: NextRequest) {
       });
 
       // Fire-and-forget: trigger auto-coverage outreach
+      const hasCoverageLine = !!coordConfig.coverage_line;
       triggerAutoCoverage({
         agencyId,
         eventId: targetShift.id,
@@ -282,9 +283,13 @@ export async function POST(request: NextRequest) {
         supabase,
       }).catch((err) => console.error("[cancel-shift] Auto-coverage trigger failed:", err));
 
+      const outreachMessage = hasCoverageLine
+        ? `Your callout has been noted for ${shiftDate} (${startTime} - ${endTime}). We're working on finding coverage.`
+        : `Your callout has been noted for ${shiftDate} (${startTime} - ${endTime}). The scheduling team will follow up about coverage.`;
+
       return NextResponse.json({
         result: "success",
-        message: `Your callout has been noted for ${shiftDate} (${startTime} - ${endTime}). We're working on finding coverage.`,
+        message: outreachMessage,
       });
     }
 

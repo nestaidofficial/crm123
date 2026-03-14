@@ -47,6 +47,17 @@ export async function triggerAutoCoverage(params: TriggerParams): Promise<void> 
 
       if (isStillActive) {
         console.warn(`[auto-scheduler] Active session exists for event ${eventId} (status: ${existingSession.status})`);
+        await supabase.from("retell_sync_log").insert({
+          agency_id: agencyId,
+          action: "auto_scheduler.trigger",
+          status: "skipped_active_session",
+          request_payload: {
+            event_id: eventId,
+            existing_session_id: existingSession.id,
+            existing_status: existingSession.status,
+            deadline_at: existingSession.deadline_at,
+          },
+        });
         return;
       }
 
@@ -132,6 +143,12 @@ export async function triggerAutoCoverage(params: TriggerParams): Promise<void> 
 
     if (!shift) {
       console.error("[auto-scheduler] Shift not found:", eventId);
+      await supabase.from("retell_sync_log").insert({
+        agency_id: agencyId,
+        action: "auto_scheduler.trigger",
+        status: "shift_not_found",
+        request_payload: { event_id: eventId },
+      });
       return;
     }
 
@@ -166,9 +183,33 @@ export async function triggerAutoCoverage(params: TriggerParams): Promise<void> 
     const agencyName = agency?.name ?? "your agency";
     const coverageLine = coordConfig?.coverage_line ? toE164(coordConfig.coverage_line) : null;
 
-    // 5. Ensure outbound agent exists
+    // 5. Pre-flight: ensure Retell client, outbound agent, and coverage line are configured
     const retell = getRetellClient();
     const outboundAgentId = await ensureOutboundAgent(agencyId, supabase);
+
+    if (!retell || !outboundAgentId || !coverageLine) {
+      const missing = [
+        !retell && "RETELL_API_KEY",
+        !outboundAgentId && "outbound_agent",
+        !coverageLine && "coverage_line",
+      ].filter(Boolean);
+
+      console.error(`[auto-scheduler] Config missing for outreach: ${missing.join(", ")}`);
+      await supabase.from("retell_sync_log").insert({
+        agency_id: agencyId,
+        action: "auto_scheduler.trigger",
+        status: "config_missing",
+        error_message: `Missing: ${missing.join(", ")}`,
+        request_payload: {
+          event_id: eventId,
+          session_id: session.id,
+          has_retell: !!retell,
+          has_outbound_agent: !!outboundAgentId,
+          has_coverage_line: !!coverageLine,
+        },
+      });
+      return;
+    }
 
     // 6. Dispatch outreach to all available caregivers
     const results = await dispatchOutreach(
@@ -191,7 +232,8 @@ export async function triggerAutoCoverage(params: TriggerParams): Promise<void> 
     );
 
     const successCount = results.filter((r) => r.success).length;
-    console.log(`[auto-scheduler] Dispatched ${successCount}/${topCaregivers.length} outreach calls for event ${eventId} (${available.length} total available)`);
+    const noPhoneCount = results.filter((r) => r.error === "No phone number").length;
+    console.log(`[auto-scheduler] Dispatched ${successCount}/${topCaregivers.length} outreach calls for event ${eventId} (${available.length} total available, ${noPhoneCount} missing phone)`);
 
     await supabase.from("retell_sync_log").insert({
       agency_id: agencyId,
@@ -202,6 +244,7 @@ export async function triggerAutoCoverage(params: TriggerParams): Promise<void> 
         session_id: session.id,
         original_caregiver_id: originalCaregiverId ?? null,
         caregivers_contacted: successCount,
+        caregivers_no_phone: noPhoneCount,
         total_available: available.length,
         max_outreach_limit: maxOutreachPerShift,
       },
