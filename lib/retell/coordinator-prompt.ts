@@ -47,7 +47,22 @@ interface CustomTool {
   };
 }
 
-type RetellTool = EndCallTool | TransferCallTool | CustomTool;
+/** Retell ExtractDynamicVariableTool — captures structured data as reusable {{variables}} */
+interface ExtractDynamicVariableTool {
+  type: "extract_dynamic_variable";
+  name: string;
+  description: string;
+  variables: Array<{
+    name: string;
+    type: "string" | "number" | "enum" | "boolean";
+    description: string;
+    required?: boolean;
+    examples?: string[];
+    choices?: string[];
+  }>;
+}
+
+type RetellTool = EndCallTool | TransferCallTool | CustomTool | ExtractDynamicVariableTool;
 
 interface RetellState {
   name: string;
@@ -300,8 +315,10 @@ When passing dates to tools, always convert to YYYY-MM-DD format.
       handledCallTypes !== "None"
         ? `→ Call types this line handles: ${handledCallTypes}`
         : ``,
-      `→ If the caller is a CAREGIVER CALLING OUT sick or unavailable → go to "callout_intake"`,
-      `→ If the caller has a SCHEDULE CHANGE or RESCHEDULE request → go to "schedule_change"`,
+      `→ If the caller wants to CALL OUT, is SICK, CAN'T MAKE IT, needs to CANCEL a shift, or is UNAVAILABLE → go to "callout_intake"`,
+      `  Keywords: "call out", "sick", "can't make it", "cancel my shift", "won't be able to come in", "need to cancel"`,
+      `→ If the caller wants to MOVE, RESCHEDULE, or CHANGE THE TIME/DATE of a shift (NOT cancel) → go to "schedule_change"`,
+      `  Keywords: "move my shift", "change the time", "reschedule", "swap", "switch to a different day"`,
       `→ If the caller has an AVAILABILITY UPDATE or OPEN SHIFT question → go to "general_scheduling"`,
       escalationList !== "None"
         ? `→ If their issue is one of these, TRANSFER to human immediately: ${escalationList}`
@@ -317,66 +334,36 @@ When passing dates to tools, always convert to YYYY-MM-DD format.
   });
 
   // ── STATE: Call-Out Intake ─────────────────────────────────────
-  const intakeFields = [
-    { flag: row.collect_caregiver_id, label: "Employee ID", prompt: "Can I get your employee ID? It starts with E dash, like E-1005." },
-    { flag: row.collect_caregiver_name, label: "Caregiver name", prompt: "And your full name?" },
-    { flag: row.collect_client_name, label: "Client name", prompt: "Which client's shift are you calling about?" },
-    { flag: row.collect_shift_date, label: "Shift date", prompt: "What date is the shift?" },
-    { flag: row.collect_shift_time, label: "Shift time", prompt: "What time does the shift start?" },
-    { flag: row.collect_reason, label: "Reason for call-out", prompt: "Can you briefly tell me the reason you can't make it?" },
-    { flag: row.collect_urgency, label: "Urgency level", prompt: "How urgent is this — is it for today or a future shift?" },
-    { flag: row.collect_same_day_flag, label: "Same-day flag", prompt: "Is this for a shift today?" },
-    { flag: row.collect_notes, label: "Additional notes", prompt: "Is there anything else the scheduler should know?" },
-  ];
-
-  const enabledIntakeFields = intakeFields.filter((f) => f.flag);
-
   const afterIntakeActions: string[] = [];
   if (row.after_notify_scheduler) afterIntakeActions.push("notify the scheduler/coordinator immediately");
   if (row.after_create_task) afterIntakeActions.push("create a coverage task to find a replacement");
 
   // Build callout_intake prompt — behaviour differs based on auto_fill_shifts
   const calloutIntakeLines: string[] = [
-    `The caller is a caregiver calling out of a shift.`,
-    `Acknowledge their call: "I understand. Let me get some details so we can arrange coverage."`,
+    `The caller is a caregiver calling out of a shift (sick, unavailable, or cancelling).`,
+    `Acknowledge: "I understand. Let me get some details so we can arrange coverage."`,
     ``,
-    `IMPORTANT — Employee ID is REQUIRED. No exceptions.`,
-    `You MUST collect and confirm the employee ID BEFORE proceeding with any other questions.`,
-    `The ID starts with E followed by digits (e.g. E-1005). Recognize spoken variants:`,
-    `"E one zero zero five", "E ten oh five", "my ID is 1005", "e1005" all mean E-1005.`,
-    `Always read the ID back for confirmation: "Just to confirm, that's E-1005?"`,
-    `If they provide an employee ID, skip the name question entirely.`,
+    `Collect in order: 1) Employee ID (REQUIRED), 2) Shift date, 3) Reason.`,
+    `Employee ID format: E-1005. Accept spoken variants ("E ten oh five", "1005", "e1005").`,
+    `Confirm the ID once: "That's E-1005?" — then move on. Do NOT repeat information already collected.`,
+    `If they give their name first, acknowledge it, then ask for the employee ID.`,
+    `If they cannot provide the ID after two attempts, transfer to human via transfer_to_human.`,
+    `Do NOT fall back to name-only identification.`,
     ``,
-    `If the caller gives their name first, acknowledge it, then STILL ask for the employee ID:`,
-    `  "Thanks. I do need your employee ID to pull up your record — it starts with E, like E-1005."`,
-    ``,
-    `If they say they don't know or don't have their ID:`,
-    `  "I need the employee ID to verify your identity. You can find it on your badge or in your welcome packet. It starts with the letter E."`,
-    `  Ask one more time. If they still cannot provide it, say:`,
-    `  "I'm not able to proceed without verifying your employee ID. Let me transfer you to the scheduling team so they can help."`,
-    `  Then use the transfer_to_human tool.`,
-    ``,
-    `Do NOT fall back to name-only identification. The employee ID is mandatory.`,
-    ``,
-    `Collect the following information one question at a time:`,
-    ...enabledIntakeFields.map((f, i) => `${i + 1}. ${f.label}: "${f.prompt}"`),
-    ``,
-    `After collecting all information, confirm the details back to the caller.`,
+    `As soon as you have the employee ID and shift date, call extract_callout_info to lock in the details.`,
   ];
 
   if (row.auto_fill_shifts) {
     calloutIntakeLines.push(
+      `Then call get_current_date, then call cancel_shift with {{employee_id}} as caregiver_short_id and {{shift_date}} as shift_date.`,
+      `Also pass {{caregiver_name}} (if available) and {{shift_time}} (if known).`,
       ``,
-      `Once you have the caregiver's employee ID and shift date, first call get_current_date to confirm today's date, then use the cancel_shift tool.`,
-      `Always pass caregiver_short_id — even if they said bare digits like "1005", pass "1005" and the system handles the rest.`,
-      `Also pass first name, last name (if provided), shift date (YYYY-MM-DD), and shift time (HH:MM 24h, if known).`,
-      ``,
-      `After the tool returns:`,
-      `- If result is "needs_id": the employee ID is missing or invalid — ask the caller for their employee ID and try again.`,
-      `- If result is "success": relay the confirmation message to the caller exactly as returned (it may say the shift was cancelled, or that the team will review — just pass along the message).`,
-      `- If result is "multiple_matches": ask for the last name and call the tool again.`,
-      `- If result is "not_found" or "no_shift": let them know, and say "I've noted the details — the scheduling team will follow up."`,
-      `- If result is "error": say "I wasn't able to update the schedule right now, but I've noted everything. The scheduling team will take care of it."`,
+      `After cancel_shift returns:`,
+      `- "needs_id": ask for employee ID again.`,
+      `- "success": relay the confirmation message exactly as returned.`,
+      `- "multiple_matches": ask for last name, call cancel_shift again.`,
+      `- "not_found" / "no_shift": say "I've noted the details — the scheduling team will follow up."`,
+      `- "error": say "I wasn't able to update the schedule right now, but I've noted everything. The scheduling team will take care of it."`,
     );
   } else {
     calloutIntakeLines.push(
@@ -388,62 +375,58 @@ When passing dates to tools, always convert to YYYY-MM-DD format.
 
   calloutIntakeLines.push(``, `Then go to "wrap_up".`);
 
+  const calloutTools: RetellTool[] = [
+    {
+      type: "extract_dynamic_variable",
+      name: "extract_callout_info",
+      description: "Extract the caregiver's details for the call-out. Call this as soon as you have their employee ID and shift date.",
+      variables: [
+        { name: "employee_id", type: "string", description: "Employee ID (e.g. E-1005, 1005)", required: true, examples: ["E-1005", "1005", "E-2341"] },
+        { name: "caregiver_name", type: "string", description: "Caregiver's full name", required: false },
+        { name: "shift_date", type: "string", description: "Shift date in YYYY-MM-DD", required: true, examples: ["2026-03-15"] },
+        { name: "shift_time", type: "string", description: "Shift start time HH:MM 24h", required: false, examples: ["09:00", "14:30"] },
+        { name: "callout_reason", type: "string", description: "Reason for calling out", required: false },
+      ],
+    },
+  ];
+
   states.push({
     name: "callout_intake",
     state_prompt: calloutIntakeLines.join("\n"),
+    tools: calloutTools,
     edges: [
       { description: "All call-out information collected", destination_state_name: "wrap_up" },
     ],
   });
 
   // ── STATE: Schedule Change ─────────────────────────────────────
+  // NOTE: This state handles RESCHEDULE only. Cancellations go through callout_intake.
   const scheduleChangeLines: string[] = [
-    `The caller has a schedule change or reschedule request.`,
+    `The caller wants to RESCHEDULE or CHANGE the date/time of a shift (NOT cancel it).`,
+    `If they actually want to cancel or call out, tell them "Let me route you to the right place" and go to "callout_intake".`,
     `Acknowledge: "I can help with that. Let me get the details."`,
     ``,
-    `IMPORTANT — Employee ID is REQUIRED. No exceptions.`,
-    `You MUST collect and confirm the employee ID BEFORE proceeding with any other questions.`,
-    `The ID starts with E followed by digits (e.g. E-1005). Recognize spoken variants:`,
-    `"E one zero zero five", "E ten oh five", "my ID is 1005", "e1005" all mean E-1005.`,
-    `Always read the ID back for confirmation: "Just to confirm, that's E-1005?"`,
-    `If they provide an employee ID, skip the name question entirely.`,
+    `Collect in order: 1) Employee ID (REQUIRED), 2) Current shift date, 3) New date/time, 4) Reason (optional).`,
+    `Employee ID format: E-1005. Accept spoken variants ("E ten oh five", "1005", "e1005").`,
+    `Confirm the ID once: "That's E-1005?" — then move on. Do NOT repeat information already collected.`,
+    `If they give their name first, acknowledge it, then ask for the employee ID.`,
+    `If they cannot provide the ID after two attempts, transfer to human via transfer_to_human.`,
+    `Do NOT fall back to name-only identification.`,
     ``,
-    `If the caller gives their name first, acknowledge it, then STILL ask for the employee ID:`,
-    `  "Thanks. I do need your employee ID to pull up your record — it starts with E, like E-1005."`,
-    ``,
-    `If they say they don't know or don't have their ID:`,
-    `  "I need the employee ID to verify your identity. You can find it on your badge or in your welcome packet. It starts with the letter E."`,
-    `  Ask one more time. If they still cannot provide it, say:`,
-    `  "I'm not able to proceed without verifying your employee ID. Let me transfer you to the scheduling team so they can help."`,
-    `  Then use the transfer_to_human tool.`,
-    ``,
-    `Do NOT fall back to name-only identification. The employee ID is mandatory.`,
-    ``,
-    `Collect:`,
-    `1. Their employee ID (e.g. E-1005)`,
-    `2. Their name (first and last — optional if employee ID provided)`,
-    `3. What change they need (change time, change date, cancel visit, etc.)`,
-    `4. The current shift date (in YYYY-MM-DD format)`,
-    `5. The current shift time (approximate start time, if known)`,
-    `6. The new date and/or time they want`,
-    `7. The reason for the change (optional, don't push if they don't want to share)`,
+    `As soon as you have the employee ID, current shift date, and new date/time, call extract_schedule_change_info to lock in the details.`,
   ];
 
   if (row.auto_fill_shifts) {
     scheduleChangeLines.push(
+      `Then call get_current_date, then call change_schedule with {{employee_id}} as caregiver_short_id, {{current_shift_date}} as current_shift_date, {{new_date}} as new_date, {{new_start_time}} as new_start_time, {{new_end_time}} as new_end_time (if known).`,
+      `Also pass {{caregiver_name}} (if available), {{current_shift_time}} (if known), and {{schedule_change_reason}} (if provided).`,
       ``,
-      `Once you have the caregiver's employee ID, current shift date, and the new date/time, first call get_current_date to confirm today's date, then:`,
-      `Always pass caregiver_short_id — even bare digits like "1005" are fine, the system handles the rest.`,
-      `- If they want to CANCEL the shift → use the cancel_shift tool`,
-      `- If they want to RESCHEDULE (change date or time) → use the change_schedule tool`,
-      `  Pass: caregiver_short_id, caregiver_first_name (optional), caregiver_last_name (optional), current_shift_date (YYYY-MM-DD), current_shift_time (HH:MM 24h, if known), new_date (YYYY-MM-DD), new_start_time (HH:MM 24h), new_end_time (HH:MM 24h, optional), reason`,
-      ``,
-      `After the tool returns:`,
-      `- If result is "needs_id": the employee ID is missing or invalid — ask the caller for their employee ID and try again.`,
-      `- If result is "success": relay the confirmation message to the caller exactly as returned.`,
-      `- If result is "multiple_matches": ask for the last name and call the tool again.`,
-      `- If result is "not_found" or "no_shift": let them know, and say "I've noted the details — the scheduling team will follow up."`,
-      `- If result is "error": say "I wasn't able to update the schedule right now, but I've noted everything. The scheduling team will take care of it."`,
+      `After change_schedule returns:`,
+      `- "needs_id": ask for employee ID again.`,
+      `- "success": relay the confirmation message exactly as returned.`,
+      `- "multiple_matches": ask for last name, call change_schedule again.`,
+      `- "not_found" / "no_shift": say "I've noted the details — the scheduling team will follow up."`,
+      `- "error": say "I wasn't able to update the schedule right now, but I've noted everything. The scheduling team will take care of it."`,
     );
   } else {
     scheduleChangeLines.push(
@@ -454,11 +437,31 @@ When passing dates to tools, always convert to YYYY-MM-DD format.
 
   scheduleChangeLines.push(``, `Then go to "wrap_up".`);
 
+  const scheduleChangeTools: RetellTool[] = [
+    {
+      type: "extract_dynamic_variable",
+      name: "extract_schedule_change_info",
+      description: "Extract the caregiver's details for the schedule change. Call this as soon as you have their employee ID, current shift date, and new date/time.",
+      variables: [
+        { name: "employee_id", type: "string", description: "Employee ID (e.g. E-1005, 1005)", required: true, examples: ["E-1005", "1005", "E-2341"] },
+        { name: "caregiver_name", type: "string", description: "Caregiver's full name", required: false },
+        { name: "current_shift_date", type: "string", description: "Current shift date in YYYY-MM-DD", required: true, examples: ["2026-03-15"] },
+        { name: "current_shift_time", type: "string", description: "Current shift start time HH:MM 24h", required: false, examples: ["09:00", "14:30"] },
+        { name: "new_date", type: "string", description: "New shift date in YYYY-MM-DD", required: false, examples: ["2026-03-20"] },
+        { name: "new_start_time", type: "string", description: "New start time HH:MM 24h", required: false, examples: ["10:00", "15:00"] },
+        { name: "new_end_time", type: "string", description: "New end time HH:MM 24h", required: false, examples: ["14:00", "19:00"] },
+        { name: "schedule_change_reason", type: "string", description: "Reason for the schedule change", required: false },
+      ],
+    },
+  ];
+
   states.push({
     name: "schedule_change",
     state_prompt: scheduleChangeLines.join("\n"),
+    tools: scheduleChangeTools,
     edges: [
       { description: "Schedule change details collected", destination_state_name: "wrap_up" },
+      { description: "Caller actually wants to cancel/call out, not reschedule", destination_state_name: "callout_intake" },
     ],
   });
 
