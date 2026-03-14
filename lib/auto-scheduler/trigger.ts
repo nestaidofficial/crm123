@@ -81,8 +81,11 @@ export async function triggerAutoCoverage(params: TriggerParams): Promise<void> 
       originalPhone = originalCaregiver?.phone ? toE164(originalCaregiver.phone) : null;
     }
 
-    // 2. Get available caregivers
-    const scored = await getAvailableCaregivers(supabase, agencyId, eventId);
+    // 2. Get available caregivers (exclude original caregiver from outreach)
+    const scored = await getAvailableCaregivers(
+      supabase, agencyId, eventId,
+      originalCaregiverId ? [originalCaregiverId] : undefined
+    );
     const available = scored.filter((c) => c.matchScore > 0 && c.availability === "available");
 
     // Limit to top 10 caregivers to prevent too many concurrent calls
@@ -137,7 +140,7 @@ export async function triggerAutoCoverage(params: TriggerParams): Promise<void> 
 
     const { data: coordConfig } = await supabase
       .from("coordinator_config")
-      .select("coverage_line")
+      .select("coverage_line, agency_timezone")
       .eq("agency_id", agencyId)
       .maybeSingle();
 
@@ -155,21 +158,25 @@ export async function triggerAutoCoverage(params: TriggerParams): Promise<void> 
     const clientName = shift.clients
       ? `${shift.clients.first_name ?? ""} ${shift.clients.last_name ?? ""}`.trim()
       : "a client";
+    const agencyTimezone = coordConfig?.agency_timezone ?? "America/New_York";
     const startAt = new Date(shift.start_at);
     const endAt = new Date(shift.end_at);
     const shiftDate = startAt.toLocaleDateString("en-US", {
       weekday: "long",
       month: "long",
       day: "numeric",
+      timeZone: agencyTimezone,
     });
     const shiftTime = `${startAt.toLocaleTimeString("en-US", {
       hour: "numeric",
       minute: "2-digit",
       hour12: true,
+      timeZone: agencyTimezone,
     })} - ${endAt.toLocaleTimeString("en-US", {
       hour: "numeric",
       minute: "2-digit",
       hour12: true,
+      timeZone: agencyTimezone,
     })}`;
     const careTypeLabels: Record<string, string> = {
       personal_care: "Personal Care",

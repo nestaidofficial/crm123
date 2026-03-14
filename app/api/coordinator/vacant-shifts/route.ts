@@ -27,6 +27,14 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Failed to fetch vacant shifts" }, { status: 500 });
   }
 
+  // Fetch agency timezone
+  const { data: coordConfig } = await supabase
+    .from("coordinator_config")
+    .select("agency_timezone")
+    .eq("agency_id", agencyId)
+    .maybeSingle();
+
+  const agencyTimezone = coordConfig?.agency_timezone ?? "America/New_York";
   const now = Date.now();
 
   const mapped = (data ?? []).map((row: any) => {
@@ -47,15 +55,18 @@ export async function GET(request: NextRequest) {
       month: "long",
       day: "numeric",
       year: "numeric",
+      timeZone: agencyTimezone,
     });
     const timeStr = `${startAt.toLocaleTimeString("en-US", {
       hour: "numeric",
       minute: "2-digit",
       hour12: true,
+      timeZone: agencyTimezone,
     })} - ${endAt.toLocaleTimeString("en-US", {
       hour: "numeric",
       minute: "2-digit",
       hour12: true,
+      timeZone: agencyTimezone,
     })}`;
 
     const careTypeLabels: Record<string, string> = {

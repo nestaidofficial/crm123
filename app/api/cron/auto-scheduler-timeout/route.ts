@@ -91,7 +91,7 @@ export async function GET(request: NextRequest) {
 
             const { data: coordConfig } = await supabase
               .from("coordinator_config")
-              .select("coverage_line")
+              .select("coverage_line, agency_timezone")
               .eq("agency_id", session.agency_id)
               .maybeSingle();
 
@@ -99,16 +99,19 @@ export async function GET(request: NextRequest) {
             const outboundAgentId = await ensureOutboundAgent(session.agency_id, supabase);
 
             if (outboundAgentId && coverageLine) {
+              const agencyTimezone = coordConfig?.agency_timezone ?? "America/New_York";
               const startAt = new Date(reassigned.start_at);
               const shiftDate = startAt.toLocaleDateString("en-US", {
                 weekday: "long",
                 month: "long",
                 day: "numeric",
+                timeZone: agencyTimezone,
               });
               const shiftTime = startAt.toLocaleTimeString("en-US", {
                 hour: "numeric",
                 minute: "2-digit",
                 hour12: true,
+                timeZone: agencyTimezone,
               });
 
               try {

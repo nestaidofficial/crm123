@@ -27,7 +27,8 @@ export interface ScoredCaregiver {
 export async function getAvailableCaregivers(
   supabase: SupabaseClient,
   agencyId: string,
-  eventId: string
+  eventId: string,
+  excludeCaregiverIds?: string[]
 ): Promise<ScoredCaregiver[]> {
   // 1. Fetch the target shift with client address
   const { data: shift } = await supabase
@@ -47,8 +48,9 @@ export async function getAvailableCaregivers(
     .eq("is_archived", false);
 
   const caregiverRoles = new Set(["CNA", "HHA", "LPN", "RN", "PCA", "caregiver"]);
+  const excluded = new Set(excludeCaregiverIds ?? []);
   const caregivers = (employees ?? []).filter(
-    (e: any) => caregiverRoles.has(e.role) || e.role?.toLowerCase().includes("caregiver")
+    (e: any) => !excluded.has(e.id) && (caregiverRoles.has(e.role) || e.role?.toLowerCase().includes("caregiver"))
   );
 
   // 3. Fetch conflicting shifts on the same date

@@ -56,7 +56,7 @@ export async function POST(request: NextRequest) {
   // Fetch coordinator config for the coverage line
   const { data: coordConfig } = await supabase
     .from("coordinator_config")
-    .select("coverage_line")
+    .select("coverage_line, agency_timezone")
     .eq("agency_id", agencyId)
     .maybeSingle();
 
@@ -70,6 +70,7 @@ export async function POST(request: NextRequest) {
   const empMap = new Map((employees ?? []).map((e: any) => [e.id, e]));
 
   // Build shift details for call/SMS
+  const agencyTimezone = coordConfig?.agency_timezone ?? "America/New_York";
   const clientName = shift.clients
     ? `${shift.clients.first_name ?? ""} ${shift.clients.last_name ?? ""}`.trim()
     : "a client";
@@ -79,15 +80,18 @@ export async function POST(request: NextRequest) {
     weekday: "long",
     month: "long",
     day: "numeric",
+    timeZone: agencyTimezone,
   });
   const shiftTime = `${startAt.toLocaleTimeString("en-US", {
     hour: "numeric",
     minute: "2-digit",
     hour12: true,
+    timeZone: agencyTimezone,
   })} - ${endAt.toLocaleTimeString("en-US", {
     hour: "numeric",
     minute: "2-digit",
     hour12: true,
+    timeZone: agencyTimezone,
   })}`;
   const careTypeLabels: Record<string, string> = {
     personal_care: "Personal Care",

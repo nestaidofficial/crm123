@@ -83,7 +83,7 @@ export async function POST(request: NextRequest) {
 
     const { data: coordConfig } = await supabase
       .from("coordinator_config")
-      .select("agency_id, auto_fill_shifts, assignment_mode")
+      .select("agency_id, auto_fill_shifts, assignment_mode, agency_timezone")
       .eq("retell_agent_id", agentId)
       .maybeSingle();
 
@@ -255,10 +255,11 @@ export async function POST(request: NextRequest) {
       newEndIso = newEndDate.toISOString();
     }
 
-    const oldStartFormatted = formatTime(targetShift.start_at);
-    const oldEndFormatted = formatTime(targetShift.end_at);
-    const newStartFormatted = formatTime(newStartIso);
-    const newEndFormatted = formatTime(newEndIso);
+    const agencyTimezone = coordConfig.agency_timezone ?? "America/New_York";
+    const oldStartFormatted = formatTime(targetShift.start_at, agencyTimezone);
+    const oldEndFormatted = formatTime(targetShift.end_at, agencyTimezone);
+    const newStartFormatted = formatTime(newStartIso, agencyTimezone);
+    const newEndFormatted = formatTime(newEndIso, agencyTimezone);
 
     if (isAutoAssign) {
       // ── Direct reschedule (auto-assign mode) ────────────────────
@@ -368,12 +369,13 @@ export async function POST(request: NextRequest) {
 
 // ── Helpers ──────────────────────────────────────────────────────
 
-function formatTime(isoString: string): string {
+function formatTime(isoString: string, timeZone = "America/New_York"): string {
   const d = new Date(isoString);
   return d.toLocaleTimeString("en-US", {
     hour: "numeric",
     minute: "2-digit",
     hour12: true,
+    timeZone,
   });
 }
 
