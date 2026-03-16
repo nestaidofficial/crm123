@@ -49,6 +49,7 @@ export interface Employee {
   workAuthorization?: string;
   notes?: string;
   skills?: string[];
+  services?: { id: string; name: string }[];
   isArchived?: boolean;
   registeredAt?: string;
   lastActiveAt?: string;

@@ -102,7 +102,26 @@ export async function GET(
     }
     if (!row) return errorResponse("Employee not found", 404);
 
-    return jsonResponse({ data: mapRowToEmployee(row as EmployeeRow) }, 200);
+    const api = mapRowToEmployee(row as EmployeeRow);
+
+    // Fetch employee services
+    const { data: employeeServices } = await supabase
+      .from("employee_services")
+      .select(`
+        service_id,
+        agency_services!inner(id, name)
+      `)
+      .eq("employee_id", id)
+      .eq("agency_id", agencyId);
+
+    if (employeeServices) {
+      api.services = employeeServices.map(es => ({
+        id: es.agency_services.id,
+        name: es.agency_services.name
+      }));
+    }
+
+    return jsonResponse({ data: api }, 200);
   } catch (e) {
     return errorResponse(e instanceof Error ? e.message : "An unexpected error occurred", 500);
   }

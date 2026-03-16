@@ -39,6 +39,7 @@ import {
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import type { Employee } from "@/lib/hr/mockEmployees";
+import { ServiceMultiSelect } from "@/components/shared/service-multi-select";
 
 const inputBase =
   "min-h-[28px] py-1 border-0 px-0 bg-transparent shadow-none focus-visible:ring-0 text-[14px] leading-[1.5] placeholder:text-neutral-400 caret-neutral-900 outline-none focus:outline-none focus:ring-0 focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0 self-center";
@@ -160,7 +161,8 @@ export function EmployeeProfileEditCard({
     defaultValues,
   });
 
-  const { control, handleSubmit, formState: { errors } } = form;
+  const { control, handleSubmit, watch, formState: { errors } } = form;
+  const watchedRole = watch("role");
 
   const onSubmit = async (data: CreateEmployeeInput) => {
     setIsSaving(true);
@@ -469,6 +471,36 @@ export function EmployeeProfileEditCard({
               />
             </EditRow>
             {errors.role && <p className={errorClass}>{errors.role.message}</p>}
+            
+            {/* Services - only show for caregivers */}
+            {watchedRole === "caregiver" && (
+              <div className="space-y-3 py-3 border-b border-neutral-100">
+                <div className="flex items-center gap-2 w-40 shrink-0 text-neutral-500">
+                  <UserCheck className="h-4 w-4 shrink-0" />
+                  <span className="text-[14px]">Services</span>
+                </div>
+                <ServiceMultiSelect
+                  value={employee?.services?.map(s => s.id) || []}
+                  onChange={async (serviceIds) => {
+                    if (employee?.id) {
+                      try {
+                        await fetch(`/api/employees/${employee.id}/services`, {
+                          method: "PUT",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({ serviceIds }),
+                        });
+                        toast.success("Services updated successfully");
+                      } catch (error) {
+                        toast.error("Failed to update services");
+                      }
+                    }
+                  }}
+                  placeholder="Select services this caregiver provides..."
+                  className="border-0"
+                />
+              </div>
+            )}
+            
             <EditRow icon={Briefcase} label="Status" id="edit-status">
               <Controller
                 name="status"

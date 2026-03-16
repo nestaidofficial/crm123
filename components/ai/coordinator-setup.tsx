@@ -490,10 +490,6 @@ export function CoordinatorSetup({ onComplete, isEditing = false }: CoordinatorS
                     { key: "clientName", label: "Client Name", locked: true },
                     { key: "shiftDate", label: "Shift Date" },
                     { key: "shiftTime", label: "Shift Time" },
-                    { key: "reasonForCallOut", label: "Reason for call-out" },
-                    { key: "urgencyLevel", label: "Urgency level" },
-                    { key: "isSameDayShift", label: "Is this a same-day shift?" },
-                    { key: "notes", label: "Notes" },
                   ].map(({ key, label, locked }) => (
                     <div key={key} className="flex items-center justify-between px-4 py-3">
                       <Label className={cn("text-sm font-normal", locked && "text-muted-foreground")}>
@@ -531,12 +527,6 @@ export function CoordinatorSetup({ onComplete, isEditing = false }: CoordinatorS
                     ))}
                   </div>
                 </div>
-              </div>
-            )}
-
-            {/* ── Step 4: Coverage Workflow ─────────────────────────────────── */}
-            {currentStep === 3 && (
-              <div className="space-y-6">
                 <div className="rounded-lg border border-border/50 p-4 bg-background/50">
                   <div className="flex items-center justify-between">
                     <div>
@@ -554,66 +544,11 @@ export function CoordinatorSetup({ onComplete, isEditing = false }: CoordinatorS
                     />
                   </div>
                 </div>
-
-                {autoFillShifts ? (
-                  <>
-                    <div className="space-y-3">
-                      <h3 className="font-medium text-sm">AI should be able to:</h3>
-                      <div className="rounded-lg border border-border/50 bg-background/50 divide-y divide-border/30">
-                        {[
-                          { key: "reviewAvailableCaregivers", label: "Review available caregivers" },
-                          { key: "findBestMatch", label: "Find best-match caregivers" },
-                          { key: "contactAutomatically", label: "Contact them automatically" },
-                          { key: "collectConfirmation", label: "Collect interest or confirmation" },
-                          { key: "rankMatches", label: "Rank matches" },
-                          { key: "notifyScheduler", label: "Notify scheduler" },
-                        ].map(({ key, label }) => (
-                          <div key={key} className="flex items-center justify-between px-4 py-3">
-                            <Label className="text-sm font-normal">{label}</Label>
-                            <Controller
-                              name={`coverageWorkflow.aiCapabilities.${key}` as any}
-                              control={form.control}
-                              render={({ field }) => (
-                                <Switch checked={field.value} onCheckedChange={field.onChange} />
-                              )}
-                            />
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="assignmentMode">Assignment mode</Label>
-                      <Controller
-                        name="coverageWorkflow.assignmentMode"
-                        control={form.control}
-                        render={({ field }) => (
-                          <Select value={field.value} onValueChange={field.onChange}>
-                            <SelectTrigger className="h-14 text-base">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="suggest">Suggest best match only</SelectItem>
-                              <SelectItem value="approval">Notify human for approval</SelectItem>
-                              <SelectItem value="auto-assign">Auto-assign if rules are met</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        )}
-                      />
-                    </div>
-                  </>
-                ) : (
-                  <div className="rounded-lg border border-border/50 p-6 bg-muted/20 text-center">
-                    <p className="text-sm text-muted-foreground">
-                      AI will only collect call-out information. Manual coverage coordination required.
-                    </p>
-                  </div>
-                )}
               </div>
             )}
 
-            {/* ── Step 5: Notifications ─────────────────────────────────────── */}
-            {currentStep === 4 && (
+            {/* ── Step 4: Notifications ─────────────────────────────────────── */}
+            {currentStep === 3 && (
               <div className="space-y-6">
                 <div className="space-y-3">
                   <div className="flex items-center gap-2">
@@ -669,7 +604,6 @@ export function CoordinatorSetup({ onComplete, isEditing = false }: CoordinatorS
                   <div className="rounded-lg border border-border/50 bg-background/50 divide-y divide-border/30">
                     {[
                       { key: "sms", label: "SMS" },
-                      { key: "email", label: "Email" },
                     ].map(({ key, label }) => (
                       <div key={key} className="flex items-center justify-between px-4 py-3">
                         <Label className="text-sm font-normal">{label}</Label>

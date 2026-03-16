@@ -14,19 +14,20 @@ import {
 
 const SystemPreferences = () => {
   return (
-    <>
-      <div className="grid grid-cols-1 gap-10 lg:grid-cols-3">
-        <div className="flex flex-col space-y-1">
-          <h3 className="font-semibold">Notifications</h3>
-          <p className="text-muted-foreground text-sm">
+    <div className="space-y-8">
+      {/* Notifications */}
+      <div className="space-y-4">
+        <div>
+          <h3 className="font-medium">Notifications</h3>
+          <p className="text-muted-foreground text-sm mt-0.5">
             Configure how you receive notifications and alerts.
           </p>
         </div>
 
-        <div className="space-y-6 lg:col-span-2">
-          <div className="flex items-center justify-between">
+        <div className="space-y-3">
+          <div className="flex flex-row items-center justify-between rounded-lg border p-4">
             <div className="space-y-0.5">
-              <Label htmlFor="email-notifications" className="text-sm font-medium">
+              <Label htmlFor="email-notifications" className="text-base">
                 Email Notifications
               </Label>
               <p className="text-muted-foreground text-sm">
@@ -36,9 +37,9 @@ const SystemPreferences = () => {
             <Switch id="email-notifications" defaultChecked />
           </div>
 
-          <div className="flex items-center justify-between">
+          <div className="flex flex-row items-center justify-between rounded-lg border p-4">
             <div className="space-y-0.5">
-              <Label htmlFor="sms-notifications" className="text-sm font-medium">
+              <Label htmlFor="sms-notifications" className="text-base">
                 SMS Notifications
               </Label>
               <p className="text-muted-foreground text-sm">
@@ -48,9 +49,9 @@ const SystemPreferences = () => {
             <Switch id="sms-notifications" />
           </div>
 
-          <div className="flex items-center justify-between">
+          <div className="flex flex-row items-center justify-between rounded-lg border p-4">
             <div className="space-y-0.5">
-              <Label htmlFor="push-notifications" className="text-sm font-medium">
+              <Label htmlFor="push-notifications" className="text-base">
                 Push Notifications
               </Label>
               <p className="text-muted-foreground text-sm">
@@ -62,17 +63,18 @@ const SystemPreferences = () => {
         </div>
       </div>
 
-      <Separator className="my-10" />
+      <Separator />
 
-      <div className="grid grid-cols-1 gap-10 lg:grid-cols-3">
-        <div className="flex flex-col space-y-1">
-          <h3 className="font-semibold">Display Settings</h3>
-          <p className="text-muted-foreground text-sm">
+      {/* Display Settings */}
+      <div className="space-y-4">
+        <div>
+          <h3 className="font-medium">Display Settings</h3>
+          <p className="text-muted-foreground text-sm mt-0.5">
             Customize how information is displayed in the system.
           </p>
         </div>
 
-        <div className="space-y-6 lg:col-span-2">
+        <div className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="date-format">Date Format</Label>
             <Select defaultValue="mm-dd-yyyy">
@@ -104,9 +106,9 @@ const SystemPreferences = () => {
             </Select>
           </div>
 
-          <div className="flex items-center justify-between">
+          <div className="flex flex-row items-center justify-between rounded-lg border p-4">
             <div className="space-y-0.5">
-              <Label htmlFor="compact-view" className="text-sm font-medium">
+              <Label htmlFor="compact-view" className="text-base">
                 Compact View
               </Label>
               <p className="text-muted-foreground text-sm">
@@ -117,7 +119,7 @@ const SystemPreferences = () => {
           </div>
         </div>
       </div>
-    </>
+    </div>
   );
 };
 

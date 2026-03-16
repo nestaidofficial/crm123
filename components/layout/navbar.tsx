@@ -142,7 +142,7 @@ export function Navbar() {
     : "User";
   
   return (
-    <header className="h-14 shrink-0 z-50 w-full border-b border-neutral-200/60 bg-white">
+    <header className="h-14 shrink-0 z-50 w-full border-b border-neutral-200/60 bg-[#F4F4F6]">
       <div className="flex h-14 items-center gap-4 px-4">
 
         {/* Left: Brand logo */}
@@ -167,7 +167,7 @@ export function Navbar() {
                 onChange={(e) => setQuery(e.target.value)}
                 onFocus={() => setIsFocused(true)}
                 onBlur={() => setTimeout(() => setIsFocused(false), 150)}
-                className="w-full h-8 pl-9 pr-4 rounded-lg text-[13px] bg-[#FFFFFF] border border-transparent text-neutral-700 placeholder:text-neutral-400 focus:outline-none focus:border-neutral-200 transition-colors"
+                className="w-full h-8 pl-9 pr-4 rounded-lg text-[13px] bg-white border border-neutral-200/70 text-neutral-700 placeholder:text-neutral-400 focus:outline-none focus:border-neutral-300 transition-colors"
               />
             </div>
 

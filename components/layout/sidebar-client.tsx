@@ -111,7 +111,7 @@ export function SidebarClient() {
                     />
                     <span
                       className={cn(
-                        "text-[13.5px] leading-none transition-colors",
+                        "text-[14px] leading-none transition-colors",
                         isActive ? "font-semibold text-neutral-900" : "font-medium"
                       )}
                     >
@@ -166,7 +166,7 @@ export function SidebarClient() {
               />
               <span
                 className={cn(
-                  "text-[13.5px] leading-none transition-colors",
+                  "text-[14px] leading-none transition-colors",
                   isActive ? "font-semibold text-neutral-900" : "font-medium"
                 )}
               >

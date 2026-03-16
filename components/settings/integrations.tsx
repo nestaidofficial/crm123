@@ -71,15 +71,15 @@ const Integrations = () => {
   };
 
   return (
-    <div className="grid grid-cols-1 gap-10 lg:grid-cols-3">
-      <div className="flex flex-col">
+    <div className="space-y-6">
+      <div>
         <h3 className="text-foreground font-semibold">Connect Integrations</h3>
-        <p className="text-muted-foreground text-sm">
+        <p className="text-muted-foreground text-sm mt-0.5">
           Connect with EHR, payment, and other third-party systems.
         </p>
       </div>
 
-      <div className="space-y-4 lg:col-span-2">
+      <div className="space-y-4">
         <div className="flex flex-wrap items-center gap-4">
           {connectedIntegrations.map((integration) => (
             <div

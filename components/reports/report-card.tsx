@@ -1,6 +1,14 @@
 "use client";
 
-import { LucideIcon, ChevronRight } from "lucide-react";
+import { LucideIcon, ExternalLinkIcon } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 
 interface ReportCardProps {
@@ -23,43 +31,46 @@ export function ReportCard({
   status = "active",
 }: ReportCardProps) {
   return (
-    <div className="bg-white rounded-2xl border border-neutral-200/60 shadow-[0_2px_8px_rgba(0,0,0,0.04)] hover:shadow-[0_4px_12px_rgba(0,0,0,0.08)] transition-all duration-200 p-5">
-      <div className="flex items-start gap-3">
-        {/* Icon */}
-        <div
-          className={cn(
-            "flex items-center justify-center w-10 h-10 rounded-xl shrink-0",
-            iconBgColor
-          )}
-        >
-          <Icon className={cn("w-5 h-5", iconColor)} />
-        </div>
-
-        {/* Content */}
-        <div className="flex-1 min-w-0">
-          <h3 className="text-[14px] font-semibold text-neutral-900 mb-1">
+    <Card className="w-full max-w-xs gap-2 pt-5 shadow-[0_2px_8px_rgba(0,0,0,0.04)] hover:shadow-[0_4px_12px_rgba(0,0,0,0.08)] transition-all duration-200 border-neutral-200/60">
+      <CardHeader className="pb-3">
+        <div className="flex items-start gap-3">
+          {/* Icon */}
+          <div
+            className={cn(
+              "flex items-center justify-center w-10 h-10 rounded-xl shrink-0",
+              iconBgColor
+            )}
+          >
+            <Icon className={cn("w-5 h-5", iconColor)} />
+          </div>
+          <CardTitle className="text-[14px] font-semibold text-neutral-900 leading-tight">
             {title}
-          </h3>
-          <p className="text-[12px] text-neutral-500 leading-relaxed mb-3">
-            {description}
-          </p>
-
-          {/* View Report Link */}
-          {status === "active" ? (
-            <button
-              onClick={onViewReport}
-              className="inline-flex items-center gap-1 text-[12px] font-medium text-blue-600 hover:text-blue-700 transition-colors group"
-            >
-              View Report
-              <ChevronRight className="w-3.5 h-3.5 transition-transform group-hover:translate-x-0.5" />
-            </button>
-          ) : (
-            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-neutral-100 text-[11px] font-medium text-neutral-500">
-              Coming Soon
-            </span>
-          )}
+          </CardTitle>
         </div>
-      </div>
-    </div>
+      </CardHeader>
+      
+      <CardContent className="mb-2 pt-0">
+        <p className="text-[12px] text-neutral-500 leading-relaxed">
+          {description}
+        </p>
+      </CardContent>
+      
+      <CardFooter className="py-2 pt-0">
+        {status === "active" ? (
+          <Button 
+            variant="link" 
+            className="px-0 text-[12px] font-medium text-blue-600 hover:text-blue-700 h-auto p-0"
+            onClick={onViewReport}
+          >
+            View Report
+            <ExternalLinkIcon className="w-3.5 h-3.5 ml-1" aria-hidden="true" />
+          </Button>
+        ) : (
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-neutral-100 text-[11px] font-medium text-neutral-500">
+            Coming Soon
+          </span>
+        )}
+      </CardFooter>
+    </Card>
   );
 }

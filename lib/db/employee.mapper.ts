@@ -90,6 +90,7 @@ export interface EmployeeApiShape {
   npi: string | null;
   notes: string | null;
   skills: string[];
+  services?: { id: string; name: string }[];
   isArchived: boolean;
   registeredAt: string;
   lastActiveAt: string | null;

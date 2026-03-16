@@ -16,12 +16,12 @@ const config = {
   		}
   	},
   	extend: {
-  		colors: {
-  			// Black & white only
-  			white: '#FAF9F6',
-  			brand: {
-  				black: '#000000',
-  				white: '#FAF9F6',
+		colors: {
+			// Black & white only
+			white: '#FFFFFF',
+			brand: {
+				black: '#000000',
+				white: '#FFFFFF',
   				whiteBase: '#F5F5F5',
   			},
   			primary: {

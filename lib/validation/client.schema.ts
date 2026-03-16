@@ -94,6 +94,7 @@ const createNonMedicalSchema = baseCreateSchema.extend({
   careType: z.literal("non_medical"),
   adlNeeds: z.array(z.string()),
   schedulePreferences: schedulePreferencesSchema,
+  serviceIds: z.array(z.string().uuid()).optional(),
 });
 
 const createMedicalSchema = baseCreateSchema.extend({
@@ -102,6 +103,7 @@ const createMedicalSchema = baseCreateSchema.extend({
   physician: physicianSchema,
   medications: z.array(medicationSchema).default([]),
   skilledServices: z.array(z.string()).default([]),
+  serviceIds: z.array(z.string().uuid()).optional(),
 });
 
 export const CreateClientSchema = z.discriminatedUnion("careType", [
@@ -132,6 +134,7 @@ const updateBaseSchema = z.object({
   physician: physicianSchema.partial().optional(),
   medications: z.array(medicationSchema).optional(),
   skilledServices: z.array(z.string()).optional(),
+  serviceIds: z.array(z.string().uuid()).optional(),
 }).strict();
 
 export const UpdateClientSchema = updateBaseSchema.superRefine((data, ctx) => {

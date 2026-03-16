@@ -186,8 +186,7 @@ export const COORDINATOR_STEPS = [
   { id: 1, label: "Line & Routing" },
   { id: 2, label: "Call Types" },
   { id: 3, label: "Call-Out Intake" },
-  { id: 4, label: "Coverage Workflow" },
-  { id: 5, label: "Notifications" },
+  { id: 4, label: "Notifications" },
 ];
 
 // Fields to validate per step (for react-hook-form trigger)
@@ -202,5 +201,4 @@ export const FIELDS_BY_STEP: Record<number, string[]> = {
   2: [], // No required fields, all toggles
   3: [], // No required fields, all toggles
   4: [], // No required fields, all toggles
-  5: [], // No required fields, all toggles
 };

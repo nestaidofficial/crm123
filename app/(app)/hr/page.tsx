@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Search, Filter, Download, UserPlus } from "lucide-react";
+import { Plus, Search, Download, UserPlus } from "lucide-react";
 import { useEmployeesStore } from "@/store/useEmployeesStore";
 
 const AddEmployeeDialog = dynamic(
@@ -90,9 +90,6 @@ export default function HRPage() {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-[16px] font-semibold text-neutral-900">Human Resources</h1>
-            <p className="text-[12px] text-neutral-500 font-normal mt-0.5">
-              Manage staff, caregivers, and credentials
-            </p>
           </div>
           <Button onClick={() => setIsDialogOpen(true)} className="h-8 rounded-full bg-[#FED96A] hover:bg-[#e8c55a] text-neutral-900 text-[12px]">
             <Plus className="mr-1.5 h-3.5 w-3.5" />
@@ -115,10 +112,6 @@ export default function HRPage() {
                   onChange={(e) => setQuery(e.target.value)}
                 />
               </div>
-              <Button variant="outline" size="sm" className="h-8 gap-1.5 text-[12px]">
-                <Filter className="h-3 w-3" />
-                Filters
-              </Button>
               <Button variant="outline" size="sm" className="h-8 gap-1.5 text-[12px]">
                 <Download className="h-3 w-3" />
                 Export

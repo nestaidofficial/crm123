@@ -23,7 +23,8 @@ const ClaimsDashboard = dynamic(
   { ssr: false }
 );
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Receipt, Building2, FileText, Plus } from "lucide-react";
+import { Receipt, Building2, FileText, Plus, Settings2 } from "lucide-react";
+import { ProviderConfig } from "@/components/billing/provider-config";
 import { Button } from "@/components/ui/button";
 import { DateRange } from "@/components/billing/date-range-picker";
 import {
@@ -240,15 +241,20 @@ export default function BillingPage() {
                 <Building2 className="h-3.5 w-3.5" />
                 Medicaid Claims
               </TabsTrigger>
+              <TabsTrigger value="configuration" variant="line">
+                <Settings2 className="h-3.5 w-3.5" />
+                Configuration
+              </TabsTrigger>
             </TabsList>
           </div>
           <div className="flex items-center gap-2 pb-2">
-            {billingSection === "private-pay" ? (
+            {billingSection === "private-pay" && (
               <Button onClick={() => setIsWizardOpen(true)} className="h-7 rounded-full bg-[#FED96A] hover:bg-[#F5CC5A] text-neutral-900 px-3 text-[12px]">
                 <FileText className="mr-1 h-3.5 w-3.5" />
                 <span className="font-medium">Generate Invoices</span>
               </Button>
-            ) : (
+            )}
+            {billingSection === "medicaid" && (
               <Button onClick={() => setClaimsTab("generate")} className="h-7 rounded-full bg-[#FED96A] hover:bg-[#F5CC5A] text-neutral-900 px-3 text-[12px]">
                 <Plus className="mr-1 h-3.5 w-3.5" />
                 <span className="font-medium">Generate Claims</span>
@@ -383,6 +389,11 @@ export default function BillingPage() {
               <GenerateClaimsWizard />
             </TabsContent>
           </Tabs>
+        </TabsContent>
+
+        {/* Configuration content */}
+        <TabsContent value="configuration" className="mt-4">
+          <ProviderConfig />
         </TabsContent>
       </Tabs>
     </div>

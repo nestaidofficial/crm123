@@ -83,6 +83,7 @@ export const CreateEmployeeSchema = z.object({
   npi: z.string().length(10, "NPI must be 10 digits").optional().or(z.literal("")), // National Provider Identifier
   notes: z.string().optional().or(z.literal("")), // Allow empty string
   skills: z.array(z.string()).default([]),
+  serviceIds: z.array(z.string().uuid()).optional(),
 });
 
 export type CreateEmployeeInput = z.infer<typeof CreateEmployeeSchema>;
@@ -113,6 +114,7 @@ export const UpdateEmployeeSchema = z
     npi: z.string().length(10, "NPI must be 10 digits").optional().or(z.literal("")),
     notes: z.string().optional().or(z.literal("")),
     skills: z.array(z.string()).optional(),
+    serviceIds: z.array(z.string().uuid()).optional(),
   })
   .strict();
 

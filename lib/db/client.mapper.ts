@@ -87,6 +87,7 @@ export interface ClientApiShape {
     relation?: string;
   };
   carePlan: NonMedicalCarePlanApi | MedicalCarePlanApi;
+  services?: { id: string; name: string }[];
   shortId: string | null;
   isArchived: boolean;
   createdAt: string;

@@ -37,8 +37,11 @@ export async function GET(request: NextRequest) {
     // Parallel queries for all stats
     const [
       clientsResult,
+      newClientsThisMonthResult,
       caregiversResult,
       todayVisitsResult,
+      openShiftsResult,
+      completedEventsThisMonthResult,
       pendingTasksResult,
       monthRevenueResult,
       employeesResult,
@@ -51,6 +54,15 @@ export async function GET(request: NextRequest) {
         .eq("agency_id", agencyId)
         .eq("is_archived", false)
         .eq("status", "active"),
+
+      // New clients created this month
+      supabase
+        .from("clients")
+        .select("id", { count: "exact", head: true })
+        .eq("agency_id", agencyId)
+        .eq("is_archived", false)
+        .gte("created_at", monthStart.toISOString())
+        .lt("created_at", monthEnd.toISOString()),
 
       // Active caregivers (caregiver roles only)
       supabase
@@ -69,6 +81,23 @@ export async function GET(request: NextRequest) {
         .gte("start_at", todayStart.toISOString())
         .lt("start_at", todayEnd.toISOString())
         .in("status", ["scheduled", "confirmed", "in_progress"]),
+
+      // Open shifts (unassigned shifts not yet cancelled/completed)
+      supabase
+        .from("schedule_events")
+        .select("id", { count: "exact", head: true })
+        .eq("agency_id", agencyId)
+        .eq("is_open_shift", true)
+        .not("status", "in", '("cancelled","completed","no_show")'),
+
+      // Completed events this month — for care hours calculation
+      supabase
+        .from("schedule_events")
+        .select("start_at, end_at")
+        .eq("agency_id", agencyId)
+        .eq("status", "completed")
+        .gte("start_at", monthStart.toISOString())
+        .lt("start_at", monthEnd.toISOString()),
 
       // Pending tasks (from schedule_event_tasks)
       supabase
@@ -103,9 +132,19 @@ export async function GET(request: NextRequest) {
 
     // Calculate stats
     const totalClients = clientsResult.count ?? 0;
+    const newClientsThisMonth = newClientsThisMonthResult.count ?? 0;
     const activeCaregivers = caregiversResult.count ?? 0;
     const scheduledVisitsToday = todayVisitsResult.count ?? 0;
+    const openShifts = openShiftsResult.count ?? 0;
     const pendingTasks = pendingTasksResult.count ?? 0;
+
+    // Calculate care hours delivered this month (sum of completed event durations)
+    const completedEvents = completedEventsThisMonthResult.data ?? [];
+    const careHoursThisMonth = completedEvents.reduce((sum, evt) => {
+      const start = new Date(evt.start_at).getTime();
+      const end = new Date(evt.end_at).getTime();
+      return sum + Math.max(0, (end - start) / (1000 * 60 * 60));
+    }, 0);
 
     // Calculate revenue
     const invoices = monthRevenueResult.data ?? [];
@@ -183,6 +222,11 @@ export async function GET(request: NextRequest) {
         change: clientsChange,
         changeLabel: `${clientsChange >= 0 ? "+" : ""}${clientsChange.toFixed(1)}% from last month`,
       },
+      newClientsThisMonth: {
+        value: newClientsThisMonth,
+        change: 0,
+        changeLabel: `${newClientsThisMonth} added this month`,
+      },
       activeCaregivers: {
         value: activeCaregivers,
         change: 0,
@@ -191,7 +235,17 @@ export async function GET(request: NextRequest) {
       scheduledVisitsToday: {
         value: scheduledVisitsToday,
         change: 0,
-        changeLabel: `${scheduledVisitsToday} scheduled`,
+        changeLabel: `${scheduledVisitsToday} scheduled today`,
+      },
+      openShifts: {
+        value: openShifts,
+        change: 0,
+        changeLabel: openShifts === 0 ? "All shifts filled" : `${openShifts} need coverage`,
+      },
+      careHoursThisMonth: {
+        value: Math.round(careHoursThisMonth),
+        change: 0,
+        changeLabel: `${Math.round(careHoursThisMonth)}h delivered this month`,
       },
       pendingTasks: {
         value: pendingTasks,

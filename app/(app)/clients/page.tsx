@@ -14,7 +14,7 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Plus, Search, Filter } from "lucide-react";
+import { Plus, Search } from "lucide-react";
 import { useClientsStore } from "@/store/useClientsStore";
 
 const ClientCreateWizard = dynamic(
@@ -73,7 +73,7 @@ export default function ClientsPage() {
             <h1 className="text-[20px] font-semibold text-neutral-900 leading-none">Clients</h1>
           </div>
 
-          {/* Right: search + filters + add */}
+          {/* Right: search + add */}
           <div className="flex items-center gap-2 py-2 mr-6">
             <div className="relative">
               <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-neutral-400 pointer-events-none" />
@@ -85,13 +85,6 @@ export default function ClientsPage() {
                 onChange={(e) => setQuery(e.target.value)}
               />
             </div>
-            <Button
-              variant="outline"
-              className="h-7 px-3 text-[12px] font-medium border-neutral-200 bg-white hover:bg-neutral-50 text-neutral-700 gap-1.5"
-            >
-              <Filter className="h-3.5 w-3.5 text-neutral-400" />
-              Filters
-            </Button>
             <Button
               onClick={() => setIsCreateOpen(true)}
               className="h-9 rounded-full bg-[#FED96A] hover:bg-[#e8c55a] text-neutral-900 text-[13px] px-4"

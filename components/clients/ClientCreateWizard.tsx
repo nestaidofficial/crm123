@@ -43,6 +43,7 @@ import { StepperHeader } from "./StepperHeader";
 import { DynamicCarePlanSection } from "./DynamicCarePlanSection";
 import { ReviewSummary } from "./ReviewSummary";
 import { AvatarUpload } from "@/components/shared/avatar-upload";
+import { ServiceMultiSelect } from "@/components/shared/service-multi-select";
 import {
   Type,
   Calendar,
@@ -167,6 +168,21 @@ export function ClientCreateWizard({ onComplete }: ClientCreateWizardProps) {
     const values = getValues();
     try {
       const created = await addClient(values);
+      
+      // If services are selected, update client services
+      if (values.serviceIds && values.serviceIds.length > 0) {
+        try {
+          await fetch(`/api/clients/${created.id}/services`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ serviceIds: values.serviceIds }),
+          });
+        } catch (serviceError) {
+          console.error("Failed to update client services:", serviceError);
+          // Don't fail the entire creation for services error
+        }
+      }
+      
       clearDraft();
       toast.success("Client created successfully");
       if (onComplete) {
@@ -524,6 +540,20 @@ export function ClientCreateWizard({ onComplete }: ClientCreateWizardProps) {
                 <CareTypeToggle value={careType} onChange={handleCareTypeChange} />
               </div>
               <DynamicCarePlanSection careType={careType} />
+              <div className="space-y-4">
+                <h3 className="text-[15px] font-semibold text-neutral-900">Services</h3>
+                <Controller
+                  name="serviceIds"
+                  control={form.control}
+                  render={({ field }) => (
+                    <ServiceMultiSelect
+                      value={field.value || []}
+                      onChange={field.onChange}
+                      placeholder="Select services for this client..."
+                    />
+                  )}
+                />
+              </div>
             </CardContent>
           </Card>
         )}

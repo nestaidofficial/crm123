@@ -173,6 +173,8 @@ export async function GET(
     }
 
     const api = mapRowToClient(row as ClientRow);
+    
+    // Fetch primary contact from guardians table
     const { data: primaryRow } = await supabase
       .from("client_guardians")
       .select("name, relationship, phone")
@@ -188,6 +190,24 @@ export async function GET(
         phone: primaryRow.phone,
       };
     }
+
+    // Fetch client services
+    const { data: clientServices } = await supabase
+      .from("client_services")
+      .select(`
+        service_id,
+        agency_services!inner(id, name)
+      `)
+      .eq("client_id", id)
+      .eq("agency_id", agencyId);
+
+    if (clientServices) {
+      api.services = clientServices.map(cs => ({
+        id: cs.agency_services.id,
+        name: cs.agency_services.name
+      }));
+    }
+
     return jsonResponse({ data: api }, 200);
   } catch (e) {
     const message =

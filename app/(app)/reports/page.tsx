@@ -1,91 +1,95 @@
 "use client";
 
-import { useRouter } from "next/navigation";
-import { ReportCard } from "@/components/reports/report-card";
+import { useState } from "react";
+import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { StaffDocumentExpiryReport } from "@/components/reports/staff-document-expiry-report";
 import { 
   FileText, 
   Clock, 
-  Users, 
-  UserCheck, 
-  DollarSign, 
-  BarChart3 
+  Users
 } from "lucide-react";
-import { toast } from "sonner";
 
 export default function ReportsPage() {
-  const router = useRouter();
-
-  const handleViewReport = (reportName: string) => {
-    toast.info(`Opening ${reportName}...`);
-    // In a real app, this would navigate to the report detail page or open a modal
-  };
+  const [activeTab, setActiveTab] = useState("staff-document-expiry");
 
   return (
-    <>
-      <div className="space-y-6">
-        <div>
-          <h1 className="text-[16px] font-semibold text-neutral-900">Reports & Analytics</h1>
-          <p className="text-[12px] text-neutral-500 font-normal mt-0.5">
-            Generate insights and analytics for your agency
-          </p>
-        </div>
-
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          <ReportCard
-            title="Staff Document Expiry"
-            description="Shows staff documents that are expiring or have expired."
-            icon={FileText}
-            iconBgColor="bg-blue-100"
-            iconColor="text-blue-600"
-            onViewReport={() => router.push("/reports/staff-document-expiry")}
-          />
-
-          <ReportCard
-            title="Clock In/Out Variance"
-            description="Shows staff who clocked in or out from shifts with variance of at least 10 minutes from scheduled times."
-            icon={Clock}
-            iconBgColor="bg-purple-100"
-            iconColor="text-purple-600"
-            onViewReport={() => handleViewReport("Clock In/Out Variance")}
-          />
-
-          <ReportCard
-            title="Work Hours Compliance - Staff View"
-            description="Monitor individual staff compliance with maximum work hour limits per period."
-            icon={Users}
-            iconBgColor="bg-green-100"
-            iconColor="text-green-600"
-            onViewReport={() => handleViewReport("Work Hours Compliance")}
-          />
-
-          <ReportCard
-            title="Staff Onboarding Status"
-            description="Tracks progress of new staff members through the onboarding process."
-            icon={UserCheck}
-            iconBgColor="bg-neutral-100"
-            iconColor="text-neutral-600"
-            status="coming-soon"
-          />
-
-          <ReportCard
-            title="Pay Review Date"
-            description="Shows staff members who are due for pay rate reviews."
-            icon={DollarSign}
-            iconBgColor="bg-amber-100"
-            iconColor="text-amber-600"
-            onViewReport={() => handleViewReport("Pay Review Date")}
-          />
-
-          <ReportCard
-            title="Human Capital Variance"
-            description="Compares minimum work hours of staff with actual hours worked."
-            icon={BarChart3}
-            iconBgColor="bg-cyan-100"
-            iconColor="text-cyan-600"
-            onViewReport={() => handleViewReport("Human Capital Variance")}
-          />
-        </div>
+    <div className="space-y-4">
+      <div>
+        <h1 className="text-[16px] font-semibold text-neutral-900">Reports & Analytics</h1>
       </div>
-    </>
+
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+        <ScrollArea>
+          <TabsList className="mb-3 h-auto -space-x-px bg-background p-0 shadow-sm shadow-black/5 rtl:space-x-reverse">
+            <TabsTrigger
+              value="staff-document-expiry"
+              className="relative overflow-hidden rounded-none border border-border py-2 after:pointer-events-none after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 first:rounded-s last:rounded-e data-[state=active]:bg-muted data-[state=active]:after:bg-primary"
+            >
+              <FileText
+                className="-ms-0.5 me-1.5 opacity-60"
+                size={16}
+                strokeWidth={2}
+                aria-hidden="true"
+              />
+              Document Expiry
+            </TabsTrigger>
+            <TabsTrigger
+              value="clock-variance"
+              className="relative overflow-hidden rounded-none border border-border py-2 after:pointer-events-none after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 first:rounded-s last:rounded-e data-[state=active]:bg-muted data-[state=active]:after:bg-primary"
+            >
+              <Clock
+                className="-ms-0.5 me-1.5 opacity-60"
+                size={16}
+                strokeWidth={2}
+                aria-hidden="true"
+              />
+              Clock Variance
+            </TabsTrigger>
+            <TabsTrigger
+              value="work-hours"
+              className="relative overflow-hidden rounded-none border border-border py-2 after:pointer-events-none after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 first:rounded-s last:rounded-e data-[state=active]:bg-muted data-[state=active]:after:bg-primary"
+            >
+              <Users
+                className="-ms-0.5 me-1.5 opacity-60"
+                size={16}
+                strokeWidth={2}
+                aria-hidden="true"
+              />
+              Work Hours
+            </TabsTrigger>
+          </TabsList>
+          <ScrollBar orientation="horizontal" />
+        </ScrollArea>
+
+        <TabsContent value="staff-document-expiry">
+          <div className="pt-1">
+            <StaffDocumentExpiryReport />
+          </div>
+        </TabsContent>
+
+        <TabsContent value="clock-variance">
+          <div className="bg-white rounded-2xl border border-neutral-200/60 shadow-card p-8 text-center mt-1">
+            <Clock className="h-12 w-12 text-purple-400 mx-auto mb-4" />
+            <h3 className="text-lg font-semibold text-neutral-900 mb-2">Clock In/Out Variance Report</h3>
+            <p className="text-neutral-500 mb-4">
+              This report will show staff who clocked in or out from shifts with variance of at least 10 minutes from scheduled times.
+            </p>
+            <p className="text-sm text-neutral-400">Coming soon...</p>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="work-hours">
+          <div className="bg-white rounded-2xl border border-neutral-200/60 shadow-card p-8 text-center mt-1">
+            <Users className="h-12 w-12 text-green-400 mx-auto mb-4" />
+            <h3 className="text-lg font-semibold text-neutral-900 mb-2">Work Hours Compliance Report</h3>
+            <p className="text-neutral-500 mb-4">
+              This report will monitor individual staff compliance with maximum work hour limits per period.
+            </p>
+            <p className="text-sm text-neutral-400">Coming soon...</p>
+          </div>
+        </TabsContent>
+      </Tabs>
+    </div>
   );
 }

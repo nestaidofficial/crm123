@@ -34,6 +34,7 @@ import {
   FileText,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { ServiceMultiSelect } from "@/components/shared/service-multi-select";
 
 const inputBase =
   "min-h-[28px] py-1 border-0 px-0 bg-transparent shadow-none focus-visible:ring-0 text-[14px] leading-[1.5] placeholder:text-neutral-400 caret-neutral-900 outline-none focus:outline-none focus:ring-0 focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0 self-center";
@@ -384,6 +385,29 @@ export function ClientEditSheet({
                   )}
                 />
               </div>
+            </div>
+
+            {/* Services */}
+            <div className="space-y-3">
+              <h3 className="text-[15px] font-semibold text-neutral-900">Services</h3>
+              <ServiceMultiSelect
+                value={client?.services?.map(s => s.id) || []}
+                onChange={async (serviceIds) => {
+                  if (client?.id) {
+                    try {
+                      await fetch(`/api/clients/${client.id}/services`, {
+                        method: "PUT",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ serviceIds }),
+                      });
+                      toast.success("Services updated successfully");
+                    } catch (error) {
+                      toast.error("Failed to update services");
+                    }
+                  }
+                }}
+                placeholder="Select services for this client..."
+              />
             </div>
 
             {/* Notes */}

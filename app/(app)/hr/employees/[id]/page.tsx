@@ -30,6 +30,7 @@ import { DocumentList, DocumentItem } from "@/components/shared/DocumentList";
 import { ChecklistSection, ChecklistItem } from "@/components/shared/ChecklistSection";
 import { useEmployeesStore } from "@/store/useEmployeesStore";
 import type { Employee } from "@/lib/hr/mockEmployees";
+import { apiFetch } from "@/lib/api-fetch";
 import { toast } from "sonner";
 
 function getRoleLabel(role: string): string {
@@ -80,7 +81,7 @@ export default function EmployeeProfilePage() {
     if (!employeeId) return;
     setDocumentsLoading(true);
     try {
-      const res = await fetch(`/api/employees/${employeeId}/documents`);
+      const res = await apiFetch(`/api/employees/${employeeId}/documents`);
       if (!res.ok) {
         setDocuments([]);
         return;
@@ -148,7 +149,7 @@ export default function EmployeeProfilePage() {
       formData.set("name", name.trim());
       if (expiry.trim()) formData.set("expiry", expiry.trim());
       files.forEach((f) => formData.append("files", f));
-      const res = await fetch(`/api/employees/${employeeId}/documents`, {
+      const res = await apiFetch(`/api/employees/${employeeId}/documents`, {
         method: "POST",
         body: formData,
       });
@@ -171,7 +172,7 @@ export default function EmployeeProfilePage() {
   const handleDeleteDocument = async (documentId: string) => {
     if (!employeeId) return;
     try {
-      const res = await fetch(`/api/employees/${employeeId}/documents?documentId=${documentId}`, { method: "DELETE" });
+      const res = await apiFetch(`/api/employees/${employeeId}/documents?documentId=${documentId}`, { method: "DELETE" });
       if (!res.ok) {
         const err = await res.json();
         throw new Error((err as { error?: string }).error || "Delete failed");
@@ -304,47 +305,69 @@ export default function EmployeeProfilePage() {
   });
 
   // Employment Details Section
+  const employmentRows = [
+    {
+      icon: <Briefcase className="h-4 w-4 text-neutral-400" />,
+      label: "Role",
+      value: getRoleLabel(employee.role),
+    },
+  ];
+
+  // Add services row only for caregivers
+  if (employee.role === "caregiver" && employee.services && employee.services.length > 0) {
+    employmentRows.push({
+      icon: <UserCheck className="h-4 w-4 text-neutral-400" />,
+      label: "Services",
+      value: (
+        <div className="flex flex-wrap gap-1">
+          {employee.services.map((service) => (
+            <Badge key={service.id} variant="secondary" className="text-xs">
+              {service.name}
+            </Badge>
+          ))}
+        </div>
+      ),
+    });
+  }
+
+  employmentRows.push(
+    {
+      icon: <Briefcase className="h-4 w-4 text-neutral-400" />,
+      label: "Department",
+      value: employee.department,
+    },
+    {
+      icon: <UserCheck className="h-4 w-4 text-neutral-400" />,
+      label: "Supervisor",
+      value: employee.supervisor,
+    },
+    {
+      icon: <Calendar className="h-4 w-4 text-neutral-400" />,
+      label: "Start Date",
+      value: new Date(employee.startDate).toLocaleDateString("en-US", {
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+      }),
+    },
+    {
+      icon: <DollarSign className="h-4 w-4 text-neutral-400" />,
+      label: "Pay Rate",
+      value:
+        employee.payType === "salary"
+          ? `$${employee.payRate.toLocaleString()}/year`
+          : `$${employee.payRate}/hour`,
+    },
+    {
+      icon: <DollarSign className="h-4 w-4 text-neutral-400" />,
+      label: "Pay Type",
+      value: employee.payType.charAt(0).toUpperCase() + employee.payType.slice(1),
+    }
+  );
+
   detailSections.push({
     title: "Employment Details",
-    rows: [
-      {
-        icon: <Briefcase className="h-4 w-4 text-neutral-400" />,
-        label: "Role",
-        value: getRoleLabel(employee.role),
-      },
-      {
-        icon: <Briefcase className="h-4 w-4 text-neutral-400" />,
-        label: "Department",
-        value: employee.department,
-      },
-      {
-        icon: <UserCheck className="h-4 w-4 text-neutral-400" />,
-        label: "Supervisor",
-        value: employee.supervisor,
-      },
-      {
-        icon: <Calendar className="h-4 w-4 text-neutral-400" />,
-        label: "Start Date",
-        value: new Date(employee.startDate).toLocaleDateString("en-US", {
-          year: "numeric",
-          month: "long",
-          day: "numeric",
-        }),
-      },
-      {
-        icon: <DollarSign className="h-4 w-4 text-neutral-400" />,
-        label: "Pay Rate",
-        value:
-          employee.payType === "salary"
-            ? `$${employee.payRate.toLocaleString()}/year`
-            : `$${employee.payRate}/hour`,
-      },
-      {
-        icon: <DollarSign className="h-4 w-4 text-neutral-400" />,
-        label: "Pay Type",
-        value: employee.payType.charAt(0).toUpperCase() + employee.payType.slice(1),
-      },
-    ],
+    rows: employmentRows,
   });
 
   return (

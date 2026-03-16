@@ -28,6 +28,7 @@ import {
 } from "@/components/ui/select";
 import { StepperHeader } from "@/components/clients/StepperHeader";
 import { AvatarUpload } from "@/components/shared/avatar-upload";
+import { ServiceMultiSelect } from "@/components/shared/service-multi-select";
 import { uploadEmployeeAvatar } from "@/lib/supabase/storage";
 import { useEmployeesStore } from "@/store/useEmployeesStore";
 import { CreateEmployeeSchema, type CreateEmployeeInput } from "@/lib/validation/employee.schema";
@@ -129,6 +130,7 @@ const defaultEmployeeValues: Partial<CreateEmployeeInput> = {
   workAuthorization: "",
   notes: "",
   skills: [],
+  serviceIds: [],
 };
 
 // Fields to validate per step
@@ -165,6 +167,7 @@ export function AddEmployeeDialog({ open, onOpenChange }: AddEmployeeDialogProps
   });
 
   const { watch, setValue, getValues, trigger, reset, formState: { errors } } = form;
+  const watchedRole = watch("role");
 
   // Hydrate from draft on mount (client-only)
   useEffect(() => {
@@ -201,7 +204,22 @@ export function AddEmployeeDialog({ open, onOpenChange }: AddEmployeeDialogProps
         ...values,
         avatar: values.avatarUrl || undefined,
       } as Parameters<typeof addEmployee>[0]);
+      
       if (newEmployee) {
+        // If services are selected for caregivers, update employee services
+        if (values.serviceIds && values.serviceIds.length > 0 && values.role === "caregiver") {
+          try {
+            await fetch(`/api/employees/${newEmployee.id}/services`, {
+              method: "PUT",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ serviceIds: values.serviceIds }),
+            });
+          } catch (serviceError) {
+            console.error("Failed to update employee services:", serviceError);
+            // Don't fail the entire creation for services error
+          }
+        }
+        
         clearDraft();
         toast.success("Employee created successfully");
         onOpenChange(false);
@@ -547,6 +565,28 @@ export function AddEmployeeDialog({ open, onOpenChange }: AddEmployeeDialogProps
                         <p className={errorClass}>{errors.supervisor.message}</p>
                       )}
                     </div>
+                    
+                    {/* Services - only show for caregivers */}
+                    {watchedRole === "caregiver" && (
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-3 pb-3 border-b border-neutral-100">
+                          <UserCircle className={iconClass} />
+                          <span className="text-[14px] text-neutral-700 font-medium">Services</span>
+                        </div>
+                        <Controller
+                          name="serviceIds"
+                          control={form.control}
+                          render={({ field }) => (
+                            <ServiceMultiSelect
+                              value={field.value || []}
+                              onChange={field.onChange}
+                              placeholder="Select services this caregiver provides..."
+                              className="border-0"
+                            />
+                          )}
+                        />
+                      </div>
+                    )}
                     <p className="text-[13px] text-neutral-700 pt-1">Payroll</p>
                     <div>
                       <div className={rowClass}>

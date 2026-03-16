@@ -79,7 +79,7 @@ export type ClientFormValues = z.infer<typeof clientFormSchema>;
 export type NonMedicalFormValues = z.infer<typeof nonMedicalSchema>;
 export type MedicalFormValues = z.infer<typeof medicalSchema>;
 
-export type SavedClient = ClientFormValues & { id: string; shortId?: string };
+export type SavedClient = ClientFormValues & { id: string; shortId?: string; services?: { id: string; name: string }[] };
 
 export const defaultNonMedicalValues: NonMedicalFormValues = {
   careType: "non_medical",

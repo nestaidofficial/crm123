@@ -451,7 +451,7 @@ function SecondarySidebar({
       onMouseEnter={onMouseEnter}
       onMouseLeave={onMouseLeave}
       className={cn(
-        "shrink-0 border-r border-neutral-200/60 bg-white flex flex-col overflow-hidden",
+        "shrink-0 border-r border-neutral-200/60 bg-[#F4F4F6] flex flex-col overflow-hidden",
         "transition-[width,opacity] duration-200 ease-in-out",
         isOpen ? "w-[190px] opacity-100" : "w-0 opacity-0 pointer-events-none"
       )}
@@ -558,7 +558,7 @@ const MemoizedContent = React.memo(function MemoizedContent({
   children: React.ReactNode;
 }) {
   return (
-    <main className="flex-1 min-w-0 overflow-y-auto bg-white pl-6 pt-4">
+    <main className="flex-1 min-w-0 overflow-y-auto bg-[#FBFBFB] px-6 pt-4">
       {children}
     </main>
   );
@@ -690,7 +690,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   const secondaryOpen = workflowsPanelHoverOpen || workflowsPanelPinned;
 
   return (
-    <div className="h-screen bg-white flex flex-col overflow-hidden">
+    <div className="h-screen bg-[#FBFBFB] flex flex-col overflow-hidden">
       <Navbar />
       <div className="flex flex-1 min-h-0">
         {/* Sidebar area: hover to expand, leave to collapse */}
@@ -698,7 +698,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
           onMouseEnter={handleSidebarMouseEnter}
           onMouseLeave={handleSidebarMouseLeave}
           className={cn(
-            "shrink-0 relative border-r border-neutral-200/60 bg-white overflow-hidden",
+            "shrink-0 relative border-r border-neutral-200/60 bg-[#F4F4F6] overflow-hidden",
             "transition-[width] duration-200 ease-in-out",
             sidebarCollapsed ? "w-14" : "w-[200px]"
           )}

@@ -201,6 +201,41 @@ function getTimezoneAbbr(ianaTimezone: string): string {
   }
 }
 
+/** Returns year/month/day/hours/minutes/dayOfWeek for a Date in the given IANA timezone. */
+function getTZDateParts(date: Date, tz: string) {
+  try {
+    const parts = new Intl.DateTimeFormat("en-US", {
+      timeZone: tz,
+      year: "numeric",
+      month: "numeric",
+      day: "numeric",
+      hour: "numeric",
+      minute: "numeric",
+      hour12: false,
+      weekday: "short",
+    }).formatToParts(date);
+    const get = (type: string) => parts.find((p) => p.type === type)?.value ?? "0";
+    const rawHour = parseInt(get("hour"));
+    return {
+      year: parseInt(get("year")),
+      month: parseInt(get("month")) - 1, // 0-indexed
+      day: parseInt(get("day")),
+      hours: rawHour === 24 ? 0 : rawHour, // Intl returns 24 for midnight in some locales
+      minutes: parseInt(get("minute")),
+      dayOfWeek: ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].indexOf(get("weekday")),
+    };
+  } catch {
+    return {
+      year: date.getFullYear(),
+      month: date.getMonth(),
+      day: date.getDate(),
+      hours: date.getHours(),
+      minutes: date.getMinutes(),
+      dayOfWeek: date.getDay(),
+    };
+  }
+}
+
 function loadTimezoneFromStorage(): string {
   if (typeof window === "undefined") return "America/New_York";
   try {
@@ -277,17 +312,20 @@ export function WeeklyCalendarView({ onCreateShiftClick }: WeeklyCalendarViewPro
   const hydrate = useScheduleStore((s) => s.hydrate);
 
   // Convert schedule events from API to CalendarEvent format for UI
+  // calendarTimezone is a dependency so events re-derive their display time when TZ changes
   const events = useMemo(() => {
     return scheduleEvents.map((evt): CalendarEvent => {
       const startDate = new Date(evt.startAt);
       const endDate = new Date(evt.endAt);
-      
+      const startParts = getTZDateParts(startDate, calendarTimezone);
+      const endParts = getTZDateParts(endDate, calendarTimezone);
+
       return {
         id: evt.id,
         title: evt.title,
-        startTime: `${startDate.getHours().toString().padStart(2, '0')}:${startDate.getMinutes().toString().padStart(2, '0')}`,
-        endTime: `${endDate.getHours().toString().padStart(2, '0')}:${endDate.getMinutes().toString().padStart(2, '0')}`,
-        day: startDate.getDay(),
+        startTime: `${startParts.hours.toString().padStart(2, "0")}:${startParts.minutes.toString().padStart(2, "0")}`,
+        endTime: `${endParts.hours.toString().padStart(2, "0")}:${endParts.minutes.toString().padStart(2, "0")}`,
+        day: startParts.dayOfWeek,
         date: startDate,
         client_id: evt.clientId || undefined,
         caregiver_id: evt.caregiverId || undefined,
@@ -299,7 +337,7 @@ export function WeeklyCalendarView({ onCreateShiftClick }: WeeklyCalendarViewPro
         participants: [],
       };
     });
-  }, [scheduleEvents]);
+  }, [scheduleEvents, calendarTimezone]);
 
   // Filter events based on viewFilter
   const filteredEvents = useMemo(() => {
@@ -399,13 +437,14 @@ export function WeeklyCalendarView({ onCreateShiftClick }: WeeklyCalendarViewPro
     return `${month} ${year}`;
   }, [currentWeek, viewMode]);
 
-  // Check if a date is today
+  // Check if a date is today (compares in calendar timezone)
   const isToday = useCallback((date: Date) => {
-    const today = currentTime;
-    return date.getDate() === today.getDate() &&
-           date.getMonth() === today.getMonth() &&
-           date.getFullYear() === today.getFullYear();
-  }, [currentTime]);
+    const todayParts = getTZDateParts(currentTime, calendarTimezone);
+    const dateParts = getTZDateParts(date, calendarTimezone);
+    return dateParts.day === todayParts.day &&
+           dateParts.month === todayParts.month &&
+           dateParts.year === todayParts.year;
+  }, [currentTime, calendarTimezone]);
 
   // Get events for a specific day
   const getEventsForDay = (dayIndex: number) => {
@@ -441,9 +480,10 @@ export function WeeklyCalendarView({ onCreateShiftClick }: WeeklyCalendarViewPro
     return hours * 60 + minutes;
   };
 
-  // Get current time in minutes
+  // Get current time in minutes (in the active calendar timezone)
   const getCurrentTimeInMinutes = () => {
-    return currentTime.getHours() * 60 + currentTime.getMinutes();
+    const parts = getTZDateParts(currentTime, calendarTimezone);
+    return parts.hours * 60 + parts.minutes;
   };
 
   // Check if current time is in the visible week
@@ -1633,9 +1673,11 @@ export function WeeklyCalendarView({ onCreateShiftClick }: WeeklyCalendarViewPro
                       </div>
                       <div className="ml-3 mt-1">
                         <div className="bg-black text-white text-[10px] px-1.5 py-0.5 rounded">
-                          {currentTime.getHours() % 12 || 12}:
-                          {currentTime.getMinutes().toString().padStart(2, "0")}{" "}
-                          {currentTime.getHours() >= 12 ? "pm" : "am"}
+                          {(() => {
+                            const p = getTZDateParts(currentTime, calendarTimezone);
+                            const h12 = p.hours % 12 || 12;
+                            return `${h12}:${p.minutes.toString().padStart(2, "0")} ${p.hours >= 12 ? "pm" : "am"}`;
+                          })()}
                         </div>
                       </div>
                     </div>

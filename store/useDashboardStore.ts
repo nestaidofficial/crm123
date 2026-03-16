@@ -3,8 +3,11 @@ import { apiFetch } from "@/lib/api-fetch";
 
 export interface DashboardStats {
   totalClients: { value: number; change: number; changeLabel: string };
+  newClientsThisMonth: { value: number; change: number; changeLabel: string };
   activeCaregivers: { value: number; change: number; changeLabel: string };
   scheduledVisitsToday: { value: number; change: number; changeLabel: string };
+  openShifts: { value: number; change: number; changeLabel: string };
+  careHoursThisMonth: { value: number; change: number; changeLabel: string };
   pendingTasks: { value: number; change: number; changeLabel: string };
   monthRevenue: { value: number; change: number; changeLabel: string };
   complianceStatus: { value: number; change: number; changeLabel: string };

@@ -44,6 +44,7 @@ import { ClientProfileEditCard } from "@/components/clients/ClientProfileEditCar
 import { ClientInsuranceTab } from "@/components/clients/client-insurance-tab";
 import { useClientsStore } from "@/store/useClientsStore";
 import type { SavedClient } from "@/lib/clients/schema";
+import { apiFetch } from "@/lib/api-fetch";
 import { toast } from "sonner";
 
 function getInitials(firstName: string, lastName: string): string {
@@ -126,7 +127,7 @@ export default function ClientProfilePage() {
     if (!clientId) return;
     setDocumentsLoading(true);
     try {
-      const res = await fetch(`/api/clients/${clientId}/documents`);
+      const res = await apiFetch(`/api/clients/${clientId}/documents`);
       if (!res.ok) {
         setDocuments([]);
         return;
@@ -229,7 +230,7 @@ export default function ClientProfilePage() {
         "metadata",
         JSON.stringify(files.map(({ name, expiryDate }) => ({ name, expiryDate: expiryDate || undefined })))
       );
-      const res = await fetch(`/api/clients/${clientId}/documents`, {
+      const res = await apiFetch(`/api/clients/${clientId}/documents`, {
         method: "POST",
         body: formData,
       });
@@ -249,7 +250,7 @@ export default function ClientProfilePage() {
   const handleDeleteDocument = async (documentId: string) => {
     if (!clientId) return;
     try {
-      const res = await fetch(`/api/clients/${clientId}/documents/${documentId}`, { method: "DELETE" });
+      const res = await apiFetch(`/api/clients/${clientId}/documents/${documentId}`, { method: "DELETE" });
       if (!res.ok) {
         const err = await res.json();
         throw new Error((err as { error?: string }).error || "Delete failed");
@@ -300,7 +301,7 @@ export default function ClientProfilePage() {
     if (!newGuardian.name?.trim() || !newGuardian.relationship?.trim() || !newGuardian.phone?.trim() || !clientId) return;
     setGuardianSaving(true);
     try {
-      const res = await fetch(`/api/clients/${clientId}/guardians`, {
+      const res = await apiFetch(`/api/clients/${clientId}/guardians`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -330,7 +331,7 @@ export default function ClientProfilePage() {
   const handleDeleteGuardian = async (guardianId: string) => {
     if (!clientId) return;
     try {
-      const res = await fetch(`/api/clients/${clientId}/guardians/${guardianId}`, { method: "DELETE" });
+      const res = await apiFetch(`/api/clients/${clientId}/guardians/${guardianId}`, { method: "DELETE" });
       if (!res.ok) {
         const err = await res.json();
         throw new Error((err as { error?: string }).error || "Failed to remove guardian");
@@ -441,6 +442,28 @@ export default function ClientProfilePage() {
       },
     ],
   });
+
+  // Services Section
+  if (client.services && client.services.length > 0) {
+    detailSections.push({
+      title: "Services",
+      rows: [
+        {
+          icon: <Heart className="h-4 w-4 text-neutral-400" />,
+          label: "Services",
+          value: (
+            <div className="flex flex-wrap gap-1">
+              {client.services.map((service) => (
+                <Badge key={service.id} variant="secondary" className="text-xs">
+                  {service.name}
+                </Badge>
+              ))}
+            </div>
+          ),
+        },
+      ],
+    });
+  }
 
   // Care Plan Section (Medical)
   if (client.careType === "medical" && "diagnosis" in client) {

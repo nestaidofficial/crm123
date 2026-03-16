@@ -26,9 +26,6 @@ export function FormsHeader({
     <div className="flex items-center justify-between">
       <div>
         <h1 className="text-[16px] font-semibold text-neutral-900">Forms</h1>
-        <p className="text-[12px] text-neutral-500 font-normal mt-0.5">
-          Create, customize, and reuse forms across your agency
-        </p>
       </div>
       <div className="flex items-center gap-2">
         <Button onClick={onCreateForm} className="h-8 rounded-full bg-black hover:bg-neutral-800 text-white text-[12px]">

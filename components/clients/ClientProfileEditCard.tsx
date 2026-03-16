@@ -35,6 +35,7 @@ import {
 } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
+import { ServiceMultiSelect } from "@/components/shared/service-multi-select";
 
 const inputBase =
   "min-h-[28px] py-1 border-0 px-0 bg-transparent shadow-none focus-visible:ring-0 text-[14px] leading-[1.5] placeholder:text-neutral-400 caret-neutral-900 outline-none focus:outline-none focus:ring-0 focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0 self-center";
@@ -381,6 +382,29 @@ export function ClientProfileEditCard({
           </div>
 
           {/* Notes */}
+          {/* Services */}
+          <div className="space-y-0">
+            <h3 className="text-[15px] font-semibold text-neutral-900 mb-3">Services</h3>
+            <ServiceMultiSelect
+              value={client?.services?.map(s => s.id) || []}
+              onChange={async (serviceIds) => {
+                if (client?.id) {
+                  try {
+                    await fetch(`/api/clients/${client.id}/services`, {
+                      method: "PUT",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({ serviceIds }),
+                    });
+                    toast.success("Services updated successfully");
+                  } catch (error) {
+                    toast.error("Failed to update services");
+                  }
+                }
+              }}
+              placeholder="Select services for this client..."
+            />
+          </div>
+
           <div className="space-y-0">
             <h3 className="text-[15px] font-semibold text-neutral-900 mb-3">Notes</h3>
             <EditRow icon={FileText} label="Notes" id="edit-notes">
