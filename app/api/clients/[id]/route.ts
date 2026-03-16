@@ -202,10 +202,10 @@ export async function GET(
       .eq("agency_id", agencyId);
 
     if (clientServices) {
-      api.services = clientServices.map(cs => ({
-        id: cs.agency_services.id,
-        name: cs.agency_services.name
-      }));
+      api.services = clientServices.map(cs => {
+        const svc = cs.agency_services as unknown as { id: string; name: string };
+        return { id: svc.id, name: svc.name };
+      });
     }
 
     return jsonResponse({ data: api }, 200);

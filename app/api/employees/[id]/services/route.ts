@@ -111,10 +111,10 @@ export async function PUT(
       .eq("employee_id", employeeId)
       .eq("agency_id", agencyId);
 
-    const services = updatedServices?.map(es => ({
-      id: es.agency_services.id,
-      name: es.agency_services.name
-    })) || [];
+    const services = updatedServices?.map(es => {
+      const svc = es.agency_services as unknown as { id: string; name: string };
+      return { id: svc.id, name: svc.name };
+    }) || [];
 
     return jsonResponse({ data: services }, 200);
   } catch (e) {
