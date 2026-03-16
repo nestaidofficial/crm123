@@ -386,11 +386,11 @@ export function ClientProfileEditCard({
           <div className="space-y-0">
             <h3 className="text-[15px] font-semibold text-neutral-900 mb-3">Services</h3>
             <ServiceMultiSelect
-              value={client?.services?.map(s => s.id) || []}
+              value={patient?.services?.map(s => s.id) || []}
               onChange={async (serviceIds) => {
-                if (client?.id) {
+                if (patient?.id) {
                   try {
-                    await fetch(`/api/clients/${client.id}/services`, {
+                    await fetch(`/api/clients/${patient.id}/services`, {
                       method: "PUT",
                       headers: { "Content-Type": "application/json" },
                       body: JSON.stringify({ serviceIds }),
