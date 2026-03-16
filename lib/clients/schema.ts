@@ -38,6 +38,7 @@ const baseSchema = z.object({
   primaryContact: primaryContactSchema,
   emergencyContact: emergencyContactSchema,
   notes: z.string().optional(),
+  serviceIds: z.array(z.string().uuid()).optional(),
 });
 
 const schedulePreferencesSchema = z.object({
