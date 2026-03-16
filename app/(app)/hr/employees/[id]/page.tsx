@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, type ReactNode } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -305,7 +305,7 @@ export default function EmployeeProfilePage() {
   });
 
   // Employment Details Section
-  const employmentRows = [
+  const employmentRows: Array<{ icon: ReactNode; label: string; value: ReactNode }> = [
     {
       icon: <Briefcase className="h-4 w-4 text-neutral-400" />,
       label: "Role",
