@@ -169,17 +169,16 @@ export function ClientCreateWizard({ onComplete }: ClientCreateWizardProps) {
     try {
       const created = await addClient(values);
       
-      // If services are selected, update client services
-      if (values.serviceIds && values.serviceIds.length > 0) {
+      const serviceIds = (values as Record<string, unknown>).serviceIds as string[] | undefined;
+      if (serviceIds && serviceIds.length > 0) {
         try {
           await fetch(`/api/clients/${created.id}/services`, {
             method: "PUT",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ serviceIds: values.serviceIds }),
+            body: JSON.stringify({ serviceIds }),
           });
         } catch (serviceError) {
           console.error("Failed to update client services:", serviceError);
-          // Don't fail the entire creation for services error
         }
       }
       
