@@ -1,15 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
-import { getUserAgencyId } from "@/lib/auth/server-auth";
+import { requireAuth, isAuthError } from "@/lib/api-auth";
 
 export async function GET(request: NextRequest) {
   try {
-    const supabase = await createClient();
-    const agencyId = await getUserAgencyId();
-
-    if (!agencyId) {
-      return NextResponse.json({ error: "Agency not found" }, { status: 404 });
-    }
+    const auth = await requireAuth(request);
+    if (isAuthError(auth)) return auth;
+    const { supabase, agencyId } = auth;
 
     // Fetch all active services for the agency
     const { data: services, error } = await supabase
