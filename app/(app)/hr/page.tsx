@@ -87,16 +87,6 @@ export default function HRPage() {
   return (
     <>
       <div className="space-y-4">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-[16px] font-semibold text-neutral-900">Human Resources</h1>
-          </div>
-          <Button onClick={() => setIsDialogOpen(true)} className="h-8 rounded-full bg-[#FED96A] hover:bg-[#e8c55a] text-neutral-900 text-[12px]">
-            <Plus className="mr-1.5 h-3.5 w-3.5" />
-            <span className="font-medium">Add Employee</span>
-          </Button>
-        </div>
-
         <AddEmployeeDialog open={isDialogOpen} onOpenChange={setIsDialogOpen} />
 
         <Card className="shadow-[0_8px_24px_rgba(0,0,0,0.06)]">
@@ -112,6 +102,10 @@ export default function HRPage() {
                   onChange={(e) => setQuery(e.target.value)}
                 />
               </div>
+              <Button onClick={() => setIsDialogOpen(true)} className="h-8 rounded-full bg-[#FED96A] hover:bg-[#e8c55a] text-neutral-900 text-[12px]">
+                <Plus className="mr-1.5 h-3.5 w-3.5" />
+                <span className="font-medium">Add Employee</span>
+              </Button>
               <Button variant="outline" size="sm" className="h-8 gap-1.5 text-[12px]">
                 <Download className="h-3 w-3" />
                 Export

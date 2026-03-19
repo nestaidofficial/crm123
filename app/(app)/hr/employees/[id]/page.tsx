@@ -22,13 +22,13 @@ import {
   Activity as ActivityIcon,
   Plus,
   X,
-  Upload,
 } from "lucide-react";
 import { ProfileDetailCard } from "@/components/shared/ProfileDetailCard";
 import { EmployeeProfileEditCard } from "@/components/hr/EmployeeProfileEditCard";
-import { DocumentList, DocumentItem } from "@/components/shared/DocumentList";
+import { DocumentList, DocumentItem, DocumentUploadPayload } from "@/components/shared/DocumentList";
 import { ChecklistSection, ChecklistItem } from "@/components/shared/ChecklistSection";
 import { useEmployeesStore } from "@/store/useEmployeesStore";
+import { useAuthStore } from "@/store/useAuthStore";
 import type { Employee } from "@/lib/hr/mockEmployees";
 import { apiFetch } from "@/lib/api-fetch";
 import { toast } from "sonner";
@@ -59,21 +59,26 @@ export default function EmployeeProfilePage() {
 
   const getEmployeeById = useEmployeesStore((state) => state.getEmployeeById);
   const hydrate = useEmployeesStore((state) => state.hydrate);
+  const loadEmployee = useEmployeesStore((state) => state.loadEmployee);
   const updateEmployee = useEmployeesStore((state) => state.updateEmployee);
+  const hydrated = useEmployeesStore((state) => state.hydrated);
+  const loading = useEmployeesStore((state) => state.loading);
+  const isAuthInitialized = useAuthStore((state) => state.isInitialized);
 
   const [newSkillValue, setNewSkillValue] = useState("");
   const [showAddSkill, setShowAddSkill] = useState(false);
   const [documents, setDocuments] = useState<DocumentItem[]>([]);
   const [documentsLoading, setDocumentsLoading] = useState(false);
   const [documentsUploading, setDocumentsUploading] = useState(false);
-  const [documentName, setDocumentName] = useState("");
-  const [documentExpiry, setDocumentExpiry] = useState("");
-  const [selectedDocumentFile, setSelectedDocumentFile] = useState<File | null>(null);
-  const [isDraggingDoc, setIsDraggingDoc] = useState(false);
 
   useEffect(() => {
     hydrate();
   }, [hydrate]);
+
+  useEffect(() => {
+    if (!isAuthInitialized) return;
+    loadEmployee(employeeId);
+  }, [isAuthInitialized, employeeId, loadEmployee]);
 
   const employee = getEmployeeById(employeeId);
 
@@ -119,10 +124,23 @@ export default function EmployeeProfilePage() {
   }, [employeeId]);
 
   useEffect(() => {
-    if (!employeeId) return;
+    if (!employeeId || !isAuthInitialized) return;
     fetchDocuments();
-  }, [employeeId, fetchDocuments]);
+  }, [employeeId, isAuthInitialized, fetchDocuments]);
 
+  // Show loading while stores are initializing
+  if (!isAuthInitialized || !hydrated || loading) {
+    return (
+      <>
+        <div className="flex flex-col items-center justify-center py-16">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-neutral-900 mb-4"></div>
+          <p className="text-body-m text-neutral-500">Loading employee...</p>
+        </div>
+      </>
+    );
+  }
+
+  // Only now can we trust that employee absence means "not found"
   if (!employee) {
     return (
       <>
@@ -140,15 +158,22 @@ export default function EmployeeProfilePage() {
     );
   }
 
-  const handleUploadDocument = async (name: string, expiry: string, files: File[]) => {
-    if (!employeeId || files.length === 0 || !name.trim()) return;
+  const handleUploadDocument = async (files: DocumentUploadPayload[]) => {
+    if (!employeeId || files.length === 0) return;
     setDocumentsUploading(true);
     try {
       const formData = new FormData();
       formData.set("type", "other");
-      formData.set("name", name.trim());
-      if (expiry.trim()) formData.set("expiry", expiry.trim());
-      files.forEach((f) => formData.append("files", f));
+      files.forEach(({ file }) => formData.append("files", file));
+      formData.set(
+        "metadata",
+        JSON.stringify(
+          files.map(({ name, expiryDate }) => ({
+            name: name || undefined,
+            expiryDate: expiryDate || undefined,
+          }))
+        )
+      );
       const res = await apiFetch(`/api/employees/${employeeId}/documents`, {
         method: "POST",
         body: formData,
@@ -157,11 +182,8 @@ export default function EmployeeProfilePage() {
         const err = await res.json();
         throw new Error((err as { error?: string }).error || "Upload failed");
       }
-      setDocumentName("");
-      setDocumentExpiry("");
-      setSelectedDocumentFile(null);
       await fetchDocuments();
-      toast.success("Document uploaded");
+      toast.success(`${files.length} document${files.length > 1 ? "s" : ""} uploaded`);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Failed to upload documents");
     } finally {
@@ -474,102 +496,21 @@ export default function EmployeeProfilePage() {
                 <Card className="border-0 bg-white rounded-2xl shadow-card">
                   <CardHeader>
                     <CardTitle className="text-h2 text-neutral-900">
-                      Upload Documents
+                      Documents
                     </CardTitle>
                     <p className="text-body-s text-neutral-500">
-                      Upload ID, contracts, certifications, and training documents
+                      Upload and manage ID, contracts, certifications, and training documents
                     </p>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="space-y-2">
-                      <label htmlFor="doc-name" className="text-body-s font-medium text-neutral-700">
-                        Document name
-                      </label>
-                      <Input
-                        id="doc-name"
-                        value={documentName}
-                        onChange={(e) => setDocumentName(e.target.value)}
-                        placeholder="e.g. CNA Certification, Driver License"
-                        className="max-w-md"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <label htmlFor="doc-expiry" className="text-body-s font-medium text-neutral-700">
-                        Expiry date <span className="text-neutral-400 font-normal">(optional)</span>
-                      </label>
-                      <Input
-                        id="doc-expiry"
-                        type="date"
-                        value={documentExpiry}
-                        onChange={(e) => setDocumentExpiry(e.target.value)}
-                        className="max-w-xs text-neutral-700 [color-scheme:light]"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <span className="text-body-s font-medium text-neutral-700">File</span>
-                      <div
-                        onDragEnter={(e) => {
-                          e.preventDefault();
-                          e.stopPropagation();
-                          setIsDraggingDoc(true);
-                        }}
-                        onDragOver={(e) => e.preventDefault()}
-                        onDragLeave={(e) => {
-                          e.preventDefault();
-                          setIsDraggingDoc(false);
-                        }}
-                        onDrop={(e) => {
-                          e.preventDefault();
-                          setIsDraggingDoc(false);
-                          const f = e.dataTransfer.files[0];
-                          if (f) setSelectedDocumentFile(f);
-                        }}
-                        className={`border-2 border-dashed rounded-xl p-4 text-center transition-colors max-w-md ${
-                          isDraggingDoc ? "border-primary-500 bg-primary-500/5" : "border-neutral-200 bg-neutral-50"
-                        }`}
-                      >
-                        <p className="text-body-s text-neutral-600 mb-2">
-                          {selectedDocumentFile
-                            ? selectedDocumentFile.name
-                            : "Drop a file here or click to choose"}
-                        </p>
-                        <input
-                          type="file"
-                          accept=".pdf,.doc,.docx,.xls,.xlsx,image/*,.txt,.csv"
-                          className="hidden"
-                          id="employee-doc-file"
-                          onChange={(e) => setSelectedDocumentFile(e.target.files?.[0] ?? null)}
-                        />
-                        <label htmlFor="employee-doc-file">
-                          <Button type="button" variant="outline" size="sm" asChild>
-                            <span>Choose File</span>
-                          </Button>
-                        </label>
-                      </div>
-                    </div>
-                    <Button
-                      disabled={!documentName.trim() || !selectedDocumentFile || documentsUploading}
-                      onClick={() =>
-                        selectedDocumentFile &&
-                        handleUploadDocument(documentName, documentExpiry, [selectedDocumentFile])
-                      }
-                    >
-                      <Upload className="h-4 w-4 mr-2" />
-                      {documentsUploading ? "Uploading…" : "Upload Document"}
-                    </Button>
-                  </CardContent>
-                </Card>
-
-                <Card className="border-0 bg-white rounded-2xl shadow-card">
-                  <CardHeader>
-                    <CardTitle className="text-h2 text-neutral-900">
-                      Document Library
-                    </CardTitle>
                   </CardHeader>
                   <CardContent>
                     <DocumentList
                       documents={documents}
+                      onUpload={handleUploadDocument}
                       onDelete={handleDeleteDocument}
+                      emptyStateMessage="No documents yet. Drop files above to get started."
+                      uploading={documentsUploading}
+                      maxSize={20 * 1024 * 1024}
+                      maxFiles={20}
                     />
                   </CardContent>
                 </Card>

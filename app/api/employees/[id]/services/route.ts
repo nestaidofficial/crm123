@@ -86,7 +86,7 @@ export async function PUT(
 
     // Insert new employee services
     if (serviceIds.length > 0) {
-      const insertData = serviceIds.map(serviceId => ({
+      const insertData = serviceIds.map((serviceId) => ({
         employee_id: employeeId,
         service_id: serviceId,
         agency_id: agencyId,
@@ -101,7 +101,7 @@ export async function PUT(
       }
     }
 
-    // Fetch updated services to return
+    // Return updated services
     const { data: updatedServices } = await supabase
       .from("employee_services")
       .select(`
@@ -111,10 +111,10 @@ export async function PUT(
       .eq("employee_id", employeeId)
       .eq("agency_id", agencyId);
 
-    const services = updatedServices?.map(es => {
+    const services = updatedServices?.map((es) => {
       const svc = es.agency_services as unknown as { id: string; name: string };
       return { id: svc.id, name: svc.name };
-    }) || [];
+    }) ?? [];
 
     return jsonResponse({ data: services }, 200);
   } catch (e) {

@@ -22,7 +22,7 @@ const rowClass = "flex items-center gap-3 pb-3 border-b border-neutral-100";
 const iconClass = "h-5 w-5 text-neutral-400 shrink-0";
 const iconSmall = "h-4 w-4 text-neutral-400 shrink-0";
 const errorClass = "text-[11px] text-red-500 -mt-1 pl-8";
-const dropdownContent = "rounded-xl border border-neutral-200/80 bg-white shadow-lg max-h-[200px] overflow-y-auto py-1.5";
+const dropdownContent = "rounded-md border border-neutral-200/80 bg-white shadow-lg max-h-[200px] overflow-y-auto py-1.5";
 const selectTriggerClass =
   "h-auto min-h-0 border-0 p-0 bg-transparent shadow-none focus:ring-0 focus:ring-offset-0 text-[14px] flex-1 min-w-0 [&>span]:text-neutral-400 data-[placeholder]:text-neutral-400 [&>svg]:hidden";
 

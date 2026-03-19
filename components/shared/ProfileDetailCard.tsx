@@ -119,25 +119,21 @@ export function ProfileDetailCard({
             </AvatarFallback>
           </Avatar>
 
-          {/* Name and badges */}
+          {/* Name, badges, metadata */}
           <div className="flex-1 min-w-0">
-            <div className="flex items-start justify-between gap-2">
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 mb-1">
-                  <h1 className="text-2xl font-bold text-neutral-900 truncate">
-                    {name}
-                  </h1>
-                  {shortId && (
-                    <span className="text-[10px] font-mono text-neutral-400 shrink-0">
-                      {shortId}
-                    </span>
-                  )}
-                </div>
-                {subtitle && (
-                  <p className="text-body-m text-neutral-500 mb-2">{subtitle}</p>
+            {/* Top row: name + edit/delete buttons */}
+            <div className="flex items-start justify-between gap-2 mb-1">
+              <div className="flex items-center gap-2 min-w-0">
+                <h1 className="text-2xl font-bold text-neutral-900 truncate">
+                  {name}
+                </h1>
+                {shortId && (
+                  <span className="text-[10px] font-mono text-neutral-400 shrink-0">
+                    {shortId}
+                  </span>
                 )}
               </div>
-              <div className="flex gap-1">
+              <div className="flex gap-1 shrink-0">
                 {onEdit && (
                   <Button
                     variant="ghost"
@@ -161,66 +157,64 @@ export function ProfileDetailCard({
               </div>
             </div>
 
-            {/* Badges */}
-            {badges.length > 0 && (
-              <div className="flex flex-wrap gap-2 mb-2">
+            {subtitle && (
+              <p className="text-body-m text-neutral-500 mb-2">{subtitle}</p>
+            )}
+
+            {/* Bottom row: badges + status pill on left, metadata on right */}
+            <div className="flex items-center justify-between gap-2 mb-2">
+              <div className="flex flex-wrap items-center gap-2">
                 {badges.map((badge, idx) => (
                   <Badge key={idx} variant={badge.variant || "secondary"}>
                     {badge.label}
                   </Badge>
                 ))}
-              </div>
-            )}
-
-            {/* Status pill */}
-            {statusPill && (
-              <span
-                className={cn(
-                  "inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium",
-                  statusPill.className
+                {statusPill && (
+                  <span
+                    className={cn(
+                      "inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium",
+                      statusPill.className
+                    )}
+                  >
+                    {statusPill.label}
+                  </span>
                 )}
-              >
-                {statusPill.label}
-              </span>
+              </div>
+
+              {/* Metadata — bottom right */}
+              {metadata.length > 0 && (
+                <div className="flex items-center gap-6 text-body-s text-neutral-500 shrink-0">
+                  {metadata.map((item, idx) => (
+                    <div key={idx} className="text-right">
+                      <div className="font-medium">{item.label}</div>
+                      <div>{item.value}</div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Action buttons row — below badges */}
+            {(onPhoneCall || onEmail || onSMS) && (
+              <div className="flex gap-2">
+                {onPhoneCall && (
+                  <Button variant="outline" size="sm" className="h-9 w-9 p-0" onClick={onPhoneCall}>
+                    <Phone className="h-4 w-4" />
+                  </Button>
+                )}
+                {onEmail && (
+                  <Button variant="outline" size="sm" className="h-9 w-9 p-0" onClick={onEmail}>
+                    <Mail className="h-4 w-4" />
+                  </Button>
+                )}
+                {onSMS && (
+                  <Button variant="outline" size="sm" className="h-9 w-9 p-0" onClick={onSMS}>
+                    <MessageSquare className="h-4 w-4" />
+                  </Button>
+                )}
+              </div>
             )}
           </div>
-        </div>
-
-        {/* Metadata row */}
-        {metadata.length > 0 && (
-          <div className="flex items-center gap-6 text-body-s text-neutral-500 mb-4">
-            {metadata.map((item, idx) => (
-              <div key={idx}>
-                <span className="font-medium">{item.label}</span>
-                <br />
-                <span>{item.value}</span>
-              </div>
-            ))}
-          </div>
-        )}
-
-        {/* Quick action buttons */}
-        <div className="flex gap-2">
-          {onPhoneCall && (
-            <Button variant="outline" size="sm" className="flex-1" onClick={onPhoneCall}>
-              <Phone className="h-4 w-4 mr-2" />
-              Phone Call
-            </Button>
-          )}
-
-          {onEmail && (
-            <Button variant="outline" size="sm" className="flex-1" onClick={onEmail}>
-              <Mail className="h-4 w-4 mr-2" />
-              Send Email
-            </Button>
-          )}
-
-          {onSMS && (
-            <Button variant="outline" size="sm" className="flex-1" onClick={onSMS}>
-              <MessageSquare className="h-4 w-4 mr-2" />
-              Send SMS
-            </Button>
-          )}
         </div>
       </div>
 

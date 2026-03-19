@@ -16,6 +16,7 @@ interface StepCardProps {
   onSendForm: () => void;
   onDeleteDocument?: () => void;
   className?: string;
+  collapsed?: boolean;
 }
 
 export function StepCard({
@@ -27,9 +28,74 @@ export function StepCard({
   onSendForm,
   onDeleteDocument,
   className,
+  collapsed = false,
 }: StepCardProps) {
   const isLocked = step.status === "not_started" && step.autoValidation;
+  const isCompleted = step.status === "verified";
 
+  // Collapsed view for completed steps
+  if (collapsed && isCompleted) {
+    return (
+      <div
+        className={cn(
+          "relative rounded-xl bg-white border border-neutral-200 transition-colors cursor-pointer overflow-hidden",
+          "hover:bg-neutral-50",
+          className
+        )}
+        onClick={onSelect}
+      >
+        <div className="p-3 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3 flex-1 min-w-0">
+            <div className="h-5 w-5 rounded-full bg-emerald-500 flex items-center justify-center shrink-0">
+              <svg
+                className="h-3 w-3 text-white"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth={3}
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M5 13l4 4L19 7"
+                />
+              </svg>
+            </div>
+            <div className="flex-1 min-w-0">
+              <h3 className="text-sm font-medium text-neutral-900 truncate">
+                {step.title}
+              </h3>
+              <div className="flex items-center gap-2 mt-0.5">
+                <span className="text-xs text-emerald-600 font-medium">
+                  COMPLETED
+                </span>
+                {step.lastUpdated && (
+                  <>
+                    <span className="text-neutral-300">•</span>
+                    <span className="text-xs text-neutral-500">
+                      {step.lastUpdated}
+                    </span>
+                  </>
+                )}
+              </div>
+            </div>
+          </div>
+          <div
+            onClick={(e) => {
+              e.stopPropagation();
+              onSendForm();
+            }}
+          >
+            <button className="text-xs text-neutral-500 hover:text-neutral-900 font-medium px-3 py-1.5 rounded-lg hover:bg-neutral-100 transition-colors">
+              Resend
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Expanded view (original)
   return (
     <div
       className={cn(

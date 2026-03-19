@@ -234,8 +234,7 @@ export const useClientsStore = create<ClientsState>((set, get) => ({
   },
 
   async loadClient(id: string) {
-    const existing = get().clients.find((p) => p.id === id);
-    if (existing) return existing;
+    // Always fetch fresh from the individual endpoint — it includes services via a join
     const response = await apiFetch(`/api/clients/${id}`);
     if (!response.ok) return null;
     const result = await response.json();

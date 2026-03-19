@@ -22,7 +22,6 @@ import { useEmployeesStore } from "@/store/useEmployeesStore";
 import { uploadEmployeeAvatar, deleteEmployeeAvatar } from "@/lib/supabase/storage";
 import { toast } from "sonner";
 import {
-  Type,
   Calendar,
   Phone,
   Mail,
@@ -36,10 +35,10 @@ import {
   Shield,
   UserCheck,
 } from "lucide-react";
-import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import type { Employee } from "@/lib/hr/mockEmployees";
 import { ServiceMultiSelect } from "@/components/shared/service-multi-select";
+import { apiFetch } from "@/lib/api-fetch";
 
 const inputBase =
   "min-h-[28px] py-1 border-0 px-0 bg-transparent shadow-none focus-visible:ring-0 text-[14px] leading-[1.5] placeholder:text-neutral-400 caret-neutral-900 outline-none focus:outline-none focus:ring-0 focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0 self-center";
@@ -49,12 +48,11 @@ const iconClass = "h-4 w-4 shrink-0";
 const errorClass = "text-[11px] text-red-500 -mt-1 pl-40";
 
 function EditRow({
-  icon: Icon,
   label,
   id,
   children,
 }: {
-  icon: React.ComponentType<{ className?: string }>;
+  icon?: React.ComponentType<{ className?: string }>;
   label: string;
   id?: string;
   children: React.ReactNode;
@@ -62,10 +60,7 @@ function EditRow({
   return (
     <div className={rowClass}>
       <div className={labelCellClass}>
-        <Icon className={iconClass} />
-        <Label htmlFor={id} className="text-body-m cursor-pointer font-normal">
-          {label}
-        </Label>
+        <span className="text-body-m">{label}</span>
       </div>
       <div className="flex-1 min-w-0 text-body-m text-neutral-900">{children}</div>
     </div>
@@ -115,6 +110,9 @@ export function EmployeeProfileEditCard({
   onSuccess,
 }: EmployeeProfileEditCardProps) {
   const [isSaving, setIsSaving] = useState(false);
+  const [selectedServiceIds, setSelectedServiceIds] = useState<string[]>(
+    () => employee?.services?.map((s) => s.id) ?? []
+  );
   const updateEmployee = useEmployeesStore((state) => state.updateEmployee);
 
   // Map Employee to form values — every field must have a defined fallback
@@ -264,7 +262,7 @@ export function EmployeeProfileEditCard({
           {/* Basic Information */}
           <div className="space-y-0">
             <h3 className="text-[15px] font-semibold text-neutral-900 mb-3">Basic Information</h3>
-            <EditRow icon={Type} label="First Name" id="edit-firstName">
+            <EditRow label="First Name" id="edit-firstName">
               <Controller
                 name="firstName"
                 control={control}
@@ -274,7 +272,7 @@ export function EmployeeProfileEditCard({
               />
             </EditRow>
             {errors.firstName && <p className={errorClass}>{errors.firstName.message}</p>}
-            <EditRow icon={Type} label="Last Name" id="edit-lastName">
+            <EditRow label="Last Name" id="edit-lastName">
               <Controller
                 name="lastName"
                 control={control}
@@ -284,7 +282,7 @@ export function EmployeeProfileEditCard({
               />
             </EditRow>
             {errors.lastName && <p className={errorClass}>{errors.lastName.message}</p>}
-            <EditRow icon={Type} label="Middle Name" id="edit-middleName">
+            <EditRow label="Middle Name" id="edit-middleName">
               <Controller
                 name="middleName"
                 control={control}
@@ -310,7 +308,7 @@ export function EmployeeProfileEditCard({
                 control={control}
                 render={({ field }) => (
                   <Select value={field.value} onValueChange={field.onChange}>
-                    <SelectTrigger id="edit-gender" className="w-full h-auto border-0 p-0 bg-transparent shadow-none">
+                    <SelectTrigger id="edit-gender" className={cn(inputBase, "w-full focus:ring-0 focus:ring-offset-0")}>
                       <SelectValue placeholder="Select gender" />
                     </SelectTrigger>
                     <SelectContent>
@@ -480,18 +478,19 @@ export function EmployeeProfileEditCard({
                   <span className="text-[14px]">Services</span>
                 </div>
                 <ServiceMultiSelect
-                  value={employee?.services?.map(s => s.id) || []}
+                  value={selectedServiceIds}
                   onChange={async (serviceIds) => {
+                    setSelectedServiceIds(serviceIds);
                     if (employee?.id) {
                       try {
-                        await fetch(`/api/employees/${employee.id}/services`, {
+                        await apiFetch(`/api/employees/${employee.id}/services`, {
                           method: "PUT",
                           headers: { "Content-Type": "application/json" },
                           body: JSON.stringify({ serviceIds }),
                         });
-                        toast.success("Services updated successfully");
-                      } catch (error) {
+                      } catch {
                         toast.error("Failed to update services");
+                        setSelectedServiceIds(employee?.services?.map((s) => s.id) ?? []);
                       }
                     }
                   }}

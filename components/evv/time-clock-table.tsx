@@ -4,6 +4,7 @@ import * as React from "react";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { CheckCircle2, XCircle, MapPin, FileSignature, Check, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { TimeClockEntry } from "@/lib/db/evv.mapper";
@@ -108,55 +109,68 @@ export function TimeClockTable({
   const someSelected = selectedEntries.length > 0 && !allSelected;
 
   return (
-    <div className="overflow-hidden">
-      <div className="overflow-x-auto">
-        <table className="w-full border-collapse">
-          <thead className="border-b border-black/5 bg-neutral-100">
-            <tr>
-              <th className="px-3 py-2 w-[40px] border-r">
-                <Checkbox
-                  checked={allSelected}
-                  onCheckedChange={onSelectAll}
-                  aria-label="Select all"
-                  className={cn(someSelected && "data-[state=checked]:bg-neutral-400")}
-                />
-              </th>
-              <th className="px-3 py-2 text-left text-[10px] font-semibold text-foreground uppercase tracking-wider border-r">Status</th>
-              <th className="px-3 py-2 text-left text-[10px] font-semibold text-foreground uppercase tracking-wider border-r">Caregiver</th>
-              <th className="px-3 py-2 text-left text-[10px] font-semibold text-foreground uppercase tracking-wider border-r">Client</th>
-              <th className="px-3 py-2 text-left text-[10px] font-semibold text-foreground uppercase tracking-wider border-r">Service</th>
-              <th className="px-3 py-2 text-left text-[10px] font-semibold text-foreground uppercase tracking-wider border-r">Scheduled</th>
-              <th className="px-3 py-2 text-left text-[10px] font-semibold text-foreground uppercase tracking-wider border-r">Clock-In</th>
-              <th className="px-3 py-2 text-left text-[10px] font-semibold text-foreground uppercase tracking-wider border-r">Clock-Out</th>
-              <th className="px-3 py-2 text-left text-[10px] font-semibold text-foreground uppercase tracking-wider border-r">Duration</th>
-              <th className="px-3 py-2 text-left text-[10px] font-semibold text-foreground uppercase tracking-wider border-r">GPS</th>
-              <th className="px-3 py-2 text-center text-[10px] font-semibold text-foreground uppercase tracking-wider border-r">Exceptions</th>
-              <th className="px-3 py-2 text-center text-[10px] font-semibold text-foreground uppercase tracking-wider">Notes/Sig</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-black/5 bg-white">
-            {entries.map((entry) => {
+    <div className="border-t border-neutral-200/60">
+      <Table>
+        <TableHeader>
+          <TableRow className="bg-neutral-50/80 [&>th]:border-t-0 hover:bg-neutral-50/80">
+            <TableHead className="w-[40px]">
+              <Checkbox
+                checked={allSelected}
+                onCheckedChange={onSelectAll}
+                aria-label="Select all"
+                className={cn(someSelected && "data-[state=checked]:bg-neutral-400")}
+              />
+            </TableHead>
+            <TableHead className="text-[10px] font-semibold uppercase tracking-wider">Status</TableHead>
+            <TableHead className="text-[10px] font-semibold uppercase tracking-wider">Caregiver</TableHead>
+            <TableHead className="text-[10px] font-semibold uppercase tracking-wider">Client</TableHead>
+            <TableHead className="text-[10px] font-semibold uppercase tracking-wider">Service</TableHead>
+            <TableHead className="text-[10px] font-semibold uppercase tracking-wider">Scheduled</TableHead>
+            <TableHead className="text-[10px] font-semibold uppercase tracking-wider">Clock-In</TableHead>
+            <TableHead className="text-[10px] font-semibold uppercase tracking-wider">Clock-Out</TableHead>
+            <TableHead className="text-[10px] font-semibold uppercase tracking-wider">Duration</TableHead>
+            <TableHead className="text-[10px] font-semibold uppercase tracking-wider">GPS</TableHead>
+            <TableHead className="text-center text-[10px] font-semibold uppercase tracking-wider">Exceptions</TableHead>
+            <TableHead className="text-center text-[10px] font-semibold uppercase tracking-wider">Notes/Sig</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {entries.length === 0 ? (
+            <TableRow>
+              <TableCell colSpan={12} className="h-24 text-center">
+                <p className="text-sm font-medium text-muted-foreground">No visits match your filters</p>
+                <p className="text-xs mt-1 text-muted-foreground">
+                  {activeFilters?.verificationTab && activeFilters.verificationTab !== "all" && activeFilters?.fundingSource && activeFilters.fundingSource !== "all" ? (
+                    <>No {activeFilters.fundingSource} visits with status &quot;{activeFilters.verificationTab}&quot;. Try &quot;All&quot; for verification status to see {activeFilters.fundingSource} visits.</>
+                  ) : (
+                    <>Try adjusting your filters or selecting &quot;All&quot; for verification status</>
+                  )}
+                </p>
+              </TableCell>
+            </TableRow>
+          ) : (
+            entries.map((entry) => {
               const isSelected = selectedEntries.includes(entry.id);
               return (
-                <tr
+                <TableRow
                   key={entry.id}
                   className={cn(
-                    "cursor-pointer bg-white transition-colors hover:bg-neutral-50",
+                    "cursor-pointer hover:bg-neutral-50/60",
                     getRowBorderClass(entry)
                   )}
                   onClick={() => onRowClick(entry)}
                 >
-                  <td className="px-3 py-2.5 border-r" onClick={(e) => e.stopPropagation()}>
+                  <TableCell onClick={(e) => e.stopPropagation()}>
                     <Checkbox
                       checked={isSelected}
                       onCheckedChange={() => onSelectEntry(entry.id)}
                       aria-label={`Select ${entry.caregiver.name}`}
                     />
-                  </td>
-                  <td className="px-3 py-2.5 border-r">
+                  </TableCell>
+                  <TableCell>
                     {getVerificationBadge(entry.verificationStatus)}
-                  </td>
-                  <td className="px-3 py-2.5 border-r">
+                  </TableCell>
+                  <TableCell>
                     <div className="flex items-center gap-2">
                       <Avatar className="h-7 w-7">
                         <AvatarImage src={entry.caregiver.image} alt={entry.caregiver.name} />
@@ -166,8 +180,8 @@ export function TimeClockTable({
                       </Avatar>
                       <span className="text-xs font-medium">{entry.caregiver.name}</span>
                     </div>
-                  </td>
-                  <td className="px-3 py-2.5 border-r">
+                  </TableCell>
+                  <TableCell>
                     <div className="flex items-center gap-2">
                       <Avatar className="h-7 w-7">
                         <AvatarImage src={entry.client.image} alt={entry.client.name} />
@@ -177,26 +191,26 @@ export function TimeClockTable({
                       </Avatar>
                       <span className="text-xs">{entry.client.name}</span>
                     </div>
-                  </td>
-                  <td className="px-3 py-2.5 border-r">
+                  </TableCell>
+                  <TableCell>
                     {getServiceBadge(entry.serviceType)}
-                  </td>
-                  <td className="px-3 py-2.5 text-xs text-muted-foreground border-r whitespace-nowrap">
+                  </TableCell>
+                  <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
                     {formatTime(entry.shiftTime.start)} - {formatTime(entry.shiftTime.end)}
-                  </td>
-                  <td className="px-3 py-2.5 text-xs border-r whitespace-nowrap">
+                  </TableCell>
+                  <TableCell className="text-xs whitespace-nowrap">
                     {formatTime(entry.clockIn)}
-                  </td>
-                  <td className="px-3 py-2.5 text-xs border-r whitespace-nowrap">
+                  </TableCell>
+                  <TableCell className="text-xs whitespace-nowrap">
                     {formatTime(entry.clockOut)}
-                  </td>
-                  <td className="px-3 py-2.5 text-xs font-medium border-r whitespace-nowrap">
+                  </TableCell>
+                  <TableCell className="text-xs font-medium whitespace-nowrap">
                     {formatDuration(entry.duration)}
-                  </td>
-                  <td className="px-3 py-2.5 border-r">
+                  </TableCell>
+                  <TableCell>
                     {getGPSBadge(entry.gpsStatus, entry.gpsDistance)}
-                  </td>
-                  <td className="px-3 py-2.5 border-r text-center">
+                  </TableCell>
+                  <TableCell className="text-center">
                     {(() => {
                       const unresolvedCount = entry.exceptions.filter(e => !e.is_resolved).length;
                       if (unresolvedCount > 0) {
@@ -208,8 +222,8 @@ export function TimeClockTable({
                       }
                       return <CheckCircle2 className="h-4 w-4 text-green-600 mx-auto" />;
                     })()}
-                  </td>
-                  <td className="px-3 py-2.5 border-r">
+                  </TableCell>
+                  <TableCell>
                     <div className="flex items-center justify-center gap-2">
                       {entry.careNotesCompleted ? (
                         <Check className="h-3.5 w-3.5 text-green-600" />
@@ -222,25 +236,13 @@ export function TimeClockTable({
                         <FileSignature className="h-3.5 w-3.5 text-neutral-300" />
                       )}
                     </div>
-                  </td>
-                </tr>
+                  </TableCell>
+                </TableRow>
               );
-            })}
-          </tbody>
-        </table>
-      </div>
-      {entries.length === 0 && (
-        <div className="text-center py-12 text-muted-foreground px-4">
-          <p className="text-sm font-medium">No visits match your filters</p>
-          <p className="text-xs mt-1">
-            {activeFilters?.verificationTab && activeFilters.verificationTab !== "all" && activeFilters?.fundingSource && activeFilters.fundingSource !== "all" ? (
-              <>No {activeFilters.fundingSource} visits with status &quot;{activeFilters.verificationTab}&quot;. Try &quot;All&quot; for verification status to see {activeFilters.fundingSource} visits.</>
-            ) : (
-              <>Try adjusting your filters or selecting &quot;All&quot; for verification status</>
-            )}
-          </p>
-        </div>
-      )}
+            })
+          )}
+        </TableBody>
+      </Table>
     </div>
   );
 }

@@ -36,13 +36,13 @@ import {
   UserCheck,
 } from "lucide-react";
 import { ProfileDetailCard } from "@/components/shared/ProfileDetailCard";
-import { DocumentUploader, FileWithMeta } from "@/components/shared/DocumentUploader";
-import { DocumentList, DocumentItem } from "@/components/shared/DocumentList";
+import { DocumentList, DocumentItem, DocumentUploadPayload } from "@/components/shared/DocumentList";
 import { ChecklistSection, ChecklistItem } from "@/components/shared/ChecklistSection";
 import { ClientEditSheet } from "@/components/clients/ClientEditSheet";
 import { ClientProfileEditCard } from "@/components/clients/ClientProfileEditCard";
 import { ClientInsuranceTab } from "@/components/clients/client-insurance-tab";
 import { useClientsStore } from "@/store/useClientsStore";
+import { useAuthStore } from "@/store/useAuthStore";
 import type { SavedClient } from "@/lib/clients/schema";
 import { apiFetch } from "@/lib/api-fetch";
 import { toast } from "sonner";
@@ -84,44 +84,19 @@ export default function ClientProfilePage() {
 
   const clients = useClientsStore((state) => state.clients);
   const hydrated = useClientsStore((state) => state.hydrated);
+  const loading = useClientsStore((state) => state.loading);
   const hydrate = useClientsStore((state) => state.hydrate);
   const loadClient = useClientsStore((state) => state.loadClient);
   const deleteClient = useClientsStore((state) => state.deleteClient);
+  const isAuthInitialized = useAuthStore((state) => state.isInitialized);
 
   useEffect(() => {
     hydrate();
   }, [hydrate]);
 
   const [loadingProfile, setLoadingProfile] = useState(false);
-  useEffect(() => {
-    const list = clients ?? [];
-    if (hydrated && !list.find((p) => p.id === clientId)) {
-      setLoadingProfile(true);
-      loadClient(clientId).finally(() => setLoadingProfile(false));
-    }
-  }, [hydrated, clientId, clients, loadClient]);
 
   const client = (clients ?? []).find((p) => p.id === clientId);
-
-  // Fetch guardians from DB when client is available
-  useEffect(() => {
-    if (!clientId) return;
-    setGuardiansLoading(true);
-    fetch(`/api/clients/${clientId}/guardians`)
-      .then((res) => (res.ok ? res.json() : Promise.resolve({ data: [] })))
-      .then((json) => {
-        const list = Array.isArray(json?.data) ? json.data : [];
-        setGuardians(list.map((g: { id: string; name: string; relationship: string; phone: string; email?: string }) => ({
-          id: g.id,
-          name: g.name,
-          relationship: g.relationship,
-          phone: g.phone,
-          email: g.email,
-        })));
-      })
-      .catch(() => setGuardians([]))
-      .finally(() => setGuardiansLoading(false));
-  }, [clientId]);
 
   const fetchDocuments = useCallback(async () => {
     if (!clientId) return;
@@ -135,14 +110,25 @@ export default function ClientProfilePage() {
       const json = await res.json();
       const list = Array.isArray(json?.data) ? json.data : [];
       setDocuments(
-        list.map((d: { id: string; name: string; type: string; size: string; uploadedDate: string; url?: string }) => ({
-          id: d.id,
-          name: d.name,
-          type: d.type,
-          size: d.size,
-          uploadedDate: d.uploadedDate,
-          url: d.url,
-        }))
+        list.map(
+          (d: {
+            id: string;
+            name: string;
+            type: string;
+            size: string;
+            uploadedDate: string;
+            expiryDate?: string;
+            url?: string;
+          }) => ({
+            id: d.id,
+            name: d.name,
+            type: d.type,
+            size: d.size,
+            uploadedDate: d.uploadedDate,
+            expiryDate: d.expiryDate,
+            url: d.url,
+          })
+        )
       );
     } catch {
       setDocuments([]);
@@ -151,10 +137,32 @@ export default function ClientProfilePage() {
     }
   }, [clientId]);
 
+  // Fetch client profile, guardians, and documents in parallel
   useEffect(() => {
-    if (!clientId) return;
-    fetchDocuments();
-  }, [clientId, fetchDocuments]);
+    if (!isAuthInitialized || !clientId) return;
+
+    setLoadingProfile(true);
+    setGuardiansLoading(true);
+
+    Promise.all([
+      loadClient(clientId).finally(() => setLoadingProfile(false)),
+      apiFetch(`/api/clients/${clientId}/guardians`)
+        .then((res) => (res.ok ? res.json() : Promise.resolve({ data: [] })))
+        .then((json) => {
+          const list = Array.isArray(json?.data) ? json.data : [];
+          setGuardians(list.map((g: { id: string; name: string; relationship: string; phone: string; email?: string }) => ({
+            id: g.id,
+            name: g.name,
+            relationship: g.relationship,
+            phone: g.phone,
+            email: g.email,
+          })));
+        })
+        .catch(() => setGuardians([]))
+        .finally(() => setGuardiansLoading(false)),
+      fetchDocuments(),
+    ]);
+  }, [isAuthInitialized, clientId, loadClient, fetchDocuments]);
 
   // Family Members & Guardians: all from client_guardians (primary has isPrimary=true from add-client)
   const familyMembers: FamilyMember[] = guardians.map((g) => ({
@@ -200,26 +208,33 @@ export default function ClientProfilePage() {
     },
   ];
 
-  if (!client) {
+  // Show loading while stores are initializing
+  if (!isAuthInitialized || !hydrated || loading || loadingProfile) {
     return (
       <>
         <div className="flex flex-col items-center justify-center py-16">
-          {loadingProfile ? (
-            <p className="text-body-m text-neutral-500">Loading client…</p>
-          ) : (
-            <>
-              <h2 className="text-h2 text-neutral-900 mb-2">Client Not Found</h2>
-              <p className="text-body-m text-neutral-500 mb-4">
-                The client you&apos;re looking for doesn&apos;t exist.
-              </p>
-            </>
-          )}
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-neutral-900 mb-4"></div>
+          <p className="text-body-m text-neutral-500">Loading client...</p>
         </div>
       </>
     );
   }
 
-  const handleUploadDocument = async (files: FileWithMeta[]) => {
+  // Only now can we trust that client absence means "not found"
+  if (!client) {
+    return (
+      <>
+        <div className="flex flex-col items-center justify-center py-16">
+          <h2 className="text-h2 text-neutral-900 mb-2">Client Not Found</h2>
+          <p className="text-body-m text-neutral-500 mb-4">
+            The client you&apos;re looking for doesn&apos;t exist.
+          </p>
+        </div>
+      </>
+    );
+  }
+
+  const handleUploadDocument = async (files: DocumentUploadPayload[]) => {
     if (!clientId || files.length === 0) return;
     setDocumentsUploading(true);
     try {
@@ -228,7 +243,12 @@ export default function ClientProfilePage() {
       files.forEach(({ file }) => formData.append("files", file));
       formData.set(
         "metadata",
-        JSON.stringify(files.map(({ name, expiryDate }) => ({ name, expiryDate: expiryDate || undefined })))
+        JSON.stringify(
+          files.map(({ name, expiryDate }) => ({
+            name: name || undefined,
+            expiryDate: expiryDate || undefined,
+          }))
+        )
       );
       const res = await apiFetch(`/api/clients/${clientId}/documents`, {
         method: "POST",
@@ -721,7 +741,7 @@ export default function ClientProfilePage() {
                         {familyMembers.map((member) => (
                           <div
                             key={member.id}
-                            className="flex items-center justify-between p-4 border border-neutral-200 rounded-xl bg-white"
+                            className="flex items-center justify-between p-4 border border-neutral-200 rounded-md bg-white"
                           >
                             <div>
                               <div className="flex items-center gap-2">
@@ -769,26 +789,11 @@ export default function ClientProfilePage() {
                 <Card className="border-0 bg-white rounded-2xl shadow-card">
                   <CardHeader>
                     <CardTitle className="text-h2 text-neutral-900">
-                      Upload Documents
+                      Documents
                     </CardTitle>
                     <p className="text-body-s text-neutral-500">
-                      Upload consents, care plans, insurance, and medical records
+                      Upload and manage consents, care plans, insurance, and medical records
                     </p>
-                  </CardHeader>
-                  <CardContent>
-                    <DocumentUploader
-                      onUpload={handleUploadDocument}
-                      disabled={documentsUploading}
-                      uploading={documentsUploading}
-                    />
-                  </CardContent>
-                </Card>
-
-                <Card className="border-0 bg-white rounded-2xl shadow-card">
-                  <CardHeader>
-                    <CardTitle className="text-h2 text-neutral-900">
-                      Document Library
-                    </CardTitle>
                   </CardHeader>
                   <CardContent>
                     {documentsLoading ? (
@@ -796,9 +801,13 @@ export default function ClientProfilePage() {
                     ) : (
                       <DocumentList
                         documents={documents}
+                        onUpload={handleUploadDocument}
                         onDownload={(doc) => doc.url && window.open(doc.url, "_blank")}
                         onDelete={handleDeleteDocument}
-                        emptyStateMessage="No documents uploaded yet"
+                        emptyStateMessage="No documents yet. Drop files above to get started."
+                        uploading={documentsUploading}
+                        maxSize={20 * 1024 * 1024}
+                        maxFiles={20}
                       />
                     )}
                   </CardContent>

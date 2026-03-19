@@ -103,7 +103,7 @@ export function SidebarClient() {
                   >
                     <Icon
                       className={cn(
-                        "h-[17px] w-[17px] shrink-0 transition-colors",
+                        "h-[19px] w-[19px] shrink-0 transition-colors",
                         isActive
                           ? "text-neutral-800"
                           : "text-neutral-400 group-hover:text-neutral-600"
@@ -158,7 +158,7 @@ export function SidebarClient() {
             >
               <Icon
                 className={cn(
-                  "h-[17px] w-[17px] shrink-0 transition-colors",
+                  "h-[19px] w-[19px] shrink-0 transition-colors",
                   isActive
                     ? "text-neutral-800"
                     : "text-neutral-400 group-hover:text-neutral-600"

@@ -21,6 +21,7 @@ interface EmployeesState {
   updateEmployee: (id: string, updates: Partial<Employee>) => Promise<void>;
   deleteEmployee: (id: string) => Promise<void>;
   getEmployeeById: (id: string) => Employee | undefined;
+  loadEmployee: (id: string) => Promise<Employee | null>;
   getDraft: () => Partial<Employee> | null;
   saveDraft: (draft: Partial<Employee>) => void;
   clearDraft: () => void;
@@ -53,6 +54,7 @@ function apiShapeToEmployee(api: EmployeeApiShape): Employee {
     bankName: api.payroll.bankName,
     notes: api.notes ?? undefined,
     skills: api.skills,
+    services: api.services ?? [],
     documents: [], // Documents loaded separately
     verifications: [], // Verifications loaded separately
   };
@@ -297,6 +299,18 @@ export const useEmployeesStore = create<EmployeesState>((set, get) => ({
 
   getEmployeeById(id: string) {
     return get().employees.find((emp) => emp.id === id);
+  },
+
+  async loadEmployee(id: string) {
+    // Always fetch fresh from the individual endpoint — it includes services via a join
+    const response = await apiFetch(`/api/employees/${id}`);
+    if (!response.ok) return null;
+    const json = await response.json();
+    const employee = apiShapeToEmployee(json.data as EmployeeApiShape);
+    set((state) => ({
+      employees: [...state.employees.filter((e) => e.id !== id), employee],
+    }));
+    return employee;
   },
 
   getDraft() {

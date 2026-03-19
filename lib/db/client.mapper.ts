@@ -274,6 +274,7 @@ export function apiShapeToSavedClient(api: ClientApiShape): SavedClient {
     primaryContact: api.primaryContact,
     emergencyContact: api.emergencyContact,
     notes: api.notes ?? undefined,
+    services: api.services ?? [],
   };
   if (api.careType === "non_medical") {
     const cp = api.carePlan as NonMedicalCarePlanApi;

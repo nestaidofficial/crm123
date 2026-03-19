@@ -1,3 +1,7 @@
+const withBundleAnalyzer = require('@next/bundle-analyzer')({
+  enabled: process.env.ANALYZE === 'true',
+})
+
 /** @type {import('next').NextConfig} */
 const securityHeaders = [
   { key: 'X-DNS-Prefetch-Control', value: 'on' },
@@ -25,6 +29,10 @@ const nextConfig = {
   compress: true,
   productionBrowserSourceMaps: false,
   experimental: {
+    staleTimes: {
+      dynamic: 30,
+      static: 300,
+    },
     optimizePackageImports: [
       "lucide-react",
       "date-fns",
@@ -49,6 +57,10 @@ const nextConfig = {
       "@dnd-kit/core",
       "@dnd-kit/sortable",
       "@dnd-kit/utilities",
+      "recharts",
+      "framer-motion",
+      "@tanstack/react-table",
+      "cmdk",
     ],
   },
   modularizeImports: {
@@ -64,8 +76,22 @@ const nextConfig = {
     ],
   },
   async headers() {
-    return [{ source: '/:path*', headers: securityHeaders }]
+    return [
+      { source: '/:path*', headers: securityHeaders },
+      {
+        source: '/avatars/:path*',
+        headers: [
+          { key: 'Cache-Control', value: 'public, max-age=31536000, immutable' },
+        ],
+      },
+      {
+        source: '/fonts/:path*',
+        headers: [
+          { key: 'Cache-Control', value: 'public, max-age=31536000, immutable' },
+        ],
+      },
+    ]
   },
 }
 
-module.exports = nextConfig
+module.exports = withBundleAnalyzer(nextConfig)

@@ -5,6 +5,6 @@ type Props = {
 };
 
 export default async function WorkflowsPage({ searchParams }: Props) {
-  const { section = "onboarding" } = await searchParams;
+  const { section = "dashboard" } = await searchParams;
   return <WorkflowsDashboard section={section} />;
 }

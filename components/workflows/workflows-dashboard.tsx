@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, useMemo } from "react";
+import dynamic from "next/dynamic";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -26,9 +27,18 @@ import {
   RefreshCw,
   AlertTriangle,
   GitBranch,
+  Edit,
+  StickyNote,
+  MoveRight,
+  Clock,
+  FileCheck,
+  Mail,
+  Phone,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { apiFetch } from "@/lib/api-fetch";
+import { useCandidatesStore } from "@/store/useCandidatesStore";
+import { AddCandidateDialog } from "./add-candidate-dialog";
+import type { Candidate } from "@/types/candidate";
 import {
   DEFAULT_CAREGIVER_PHASES,
   type CaregiverInfo,
@@ -38,68 +48,33 @@ import {
   type ComplianceDocument,
   type AuditLogEntry,
   StepCardsPanel,
+  StepCard,
   AuditModeOverlay,
   StepUploadDialog,
   useComplianceGates,
   usePhaseProgress,
 } from "./compliance";
-import type { EmployeeApiShape } from "@/lib/db/employee.mapper";
 
-interface WorkflowEmployee {
-  id: string;
-  name: string;
-  email: string;
-  title: string;
-  department: string;
-  location: string;
-  startDate: string;
-  status: "pending" | "in-progress" | "completed";
-  progress: number;
-  totalSteps: number;
-  avatarUrl: string | null;
-}
+const WorkflowSetupWizard = dynamic(
+  () => import("./WorkflowSetupWizard").then((m) => ({ default: m.WorkflowSetupWizard })),
+  { ssr: false }
+);
+const CandidateOnboardingPanel = dynamic(
+  () => import("./candidate-onboarding-panel").then((m) => ({ default: m.CandidateOnboardingPanel })),
+  { ssr: false }
+);
+const CandidateInfoPanel = dynamic(
+  () => import("./candidate-info-panel").then((m) => ({ default: m.CandidateInfoPanel })),
+  { ssr: false }
+);
+const SendFormDialog = dynamic(
+  () => import("./send-form-dialog").then((m) => ({ default: m.SendFormDialog })),
+  { ssr: false }
+);
 
-function formatRole(role: string): string {
-  const roleMap: Record<string, string> = {
-    caregiver: "Caregiver",
-    cna: "CNA",
-    hha: "HHA",
-    lpn: "LPN",
-    rn: "RN",
-    admin: "Admin",
-    coordinator: "Coordinator",
-    other: "Other",
-  };
-  return roleMap[role] || role.charAt(0).toUpperCase() + role.slice(1);
-}
-
-function mapEmployeeToWorkflow(employee: EmployeeApiShape): WorkflowEmployee {
-  const status =
-    employee.status === "onboarding"
-      ? "in-progress"
-      : employee.status === "active"
-        ? "completed"
-        : "pending";
-
-  const progress = employee.status === "active" ? 14 : 0;
-
-  return {
-    id: employee.id,
-    name: `${employee.firstName} ${employee.lastName}`,
-    email: employee.email,
-    title: formatRole(employee.role),
-    department: employee.department,
-    location: `${employee.address.city}, ${employee.address.state}`,
-    startDate: new Date(employee.startDate).toLocaleDateString("en-US", {
-      month: "short",
-      day: "numeric",
-      year: "numeric",
-    }),
-    status,
-    progress,
-    totalSteps: 14,
-    avatarUrl: employee.avatarUrl,
-  };
+interface WorkflowConfig {
+  configured: boolean;
+  selectedStepIds: string[];
 }
 
 // Phase icons mapping
@@ -112,37 +87,116 @@ const PHASE_ICONS = {
   "phase-6": CheckCircle2,
 };
 
-export function WorkflowsDashboard({ section = "onboarding" }: { section?: string }) {
-  const [selectedEmployee, setSelectedEmployee] = useState<string | null>(null);
+export function WorkflowsDashboard({ section = "dashboard" }: { section?: string }) {
+  // Candidate store
+  const candidates = useCandidatesStore((s) => s.candidates);
+
+  const [selectedCandidateId, setSelectedCandidateId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
-  const [employees, setEmployees] = useState<WorkflowEmployee[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  
-  // Phase workflow state (lifted from ComplianceWorkflowLayout)
+  const [showCandidateSearch, setShowCandidateSearch] = useState(false);
+  const [showAddCandidate, setShowAddCandidate] = useState(false);
+
+  // Workflow setup wizard state
+  const [showSetupWizard, setShowSetupWizard] = useState(false);
+  const [workflowConfig, setWorkflowConfig] = useState<WorkflowConfig | null>(null);
+
+  // Phase workflow state
   const [phases, setPhases] = useState<CompliancePhase[]>([]);
   const [activePhaseId, setActivePhaseId] = useState<string | null>(null);
   const [activeStepId, setActiveStepId] = useState<string | null>(null);
   const [auditModeOpen, setAuditModeOpen] = useState(false);
-  const [showEmployeeSearch, setShowEmployeeSearch] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
   const [uploadStepId, setUploadStepId] = useState<string | null>(null);
-  
+  const [sendFormDialogOpen, setSendFormDialogOpen] = useState(false);
+  const [sendFormStepId, setSendFormStepId] = useState<string | null>(null);
+
   // Refs
   const searchInputRef = useRef<HTMLInputElement>(null);
   const searchContainerRef = useRef<HTMLDivElement>(null);
 
+  // Show setup wizard only when arriving from the Employee sub-item under Onboarding
+  // DEV: always show wizard on employee-onboarding regardless of saved config
+  useEffect(() => {
+    if (section !== "employee-onboarding") {
+      setShowSetupWizard(false);
+      return;
+    }
+    setShowSetupWizard(true);
+  }, [section]);
+
+  // Filter phases based on selected steps
+  const getFilteredPhases = useCallback((): CompliancePhase[] => {
+    if (!workflowConfig?.selectedStepIds) {
+      return DEFAULT_CAREGIVER_PHASES;
+    }
+
+    const filteredPhases = DEFAULT_CAREGIVER_PHASES.map(phase => ({
+      ...phase,
+      steps: phase.steps.filter(step => workflowConfig.selectedStepIds.includes(step.id))
+    })).filter(phase => phase.steps.length > 0);
+
+    // Re-number steps sequentially
+    let stepCounter = 1;
+    return filteredPhases.map(phase => ({
+      ...phase,
+      steps: phase.steps.map(step => ({
+        ...step,
+        stepNumber: stepCounter++
+      }))
+    }));
+  }, [workflowConfig]);
+
+  // Handle wizard completion
+  const handleWizardComplete = useCallback((config: WorkflowConfig) => {
+    try {
+      localStorage.setItem("nessa-onboarding-workflow-config", JSON.stringify(config));
+      setWorkflowConfig(config);
+      setShowSetupWizard(false);
+    } catch (error) {
+      console.error("Failed to save workflow config:", error);
+    }
+  }, []);
+
+  // Handle reconfigure workflow
+  const handleReconfigureWorkflow = useCallback(() => {
+    setShowSetupWizard(true);
+  }, []);
+
   // Computed derived values
-  const filteredEmployees = employees.filter((emp) =>
-    emp.name.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredCandidates = candidates.filter((c) => {
+    const name = `${c.firstName} ${c.lastName}`.toLowerCase();
+    return name.includes(searchQuery.toLowerCase()) ||
+      c.email.toLowerCase().includes(searchQuery.toLowerCase());
+  });
 
-  const selectedEmployeeData = selectedEmployee
-    ? employees.find((e) => e.id === selectedEmployee)
-    : null;
+  const selectedCandidateData: Candidate | null =
+    selectedCandidateId
+      ? candidates.find((c) => c.id === selectedCandidateId) ?? null
+      : null;
 
-  // Reset selected index when filtered employees change
+  // Memoized so useEffect doesn't re-fire every render
+  const selectedEmployeeData = useMemo(() => {
+    if (!selectedCandidateData) return null;
+    return {
+      id: selectedCandidateData.id,
+      name: `${selectedCandidateData.firstName} ${selectedCandidateData.lastName}`,
+      email: selectedCandidateData.email,
+      title: "Candidate",
+      department: "",
+      location: selectedCandidateData.address.city
+        ? `${selectedCandidateData.address.city}, ${selectedCandidateData.address.state}`
+        : "",
+      startDate: "",
+      status: "pending" as const,
+      progress: 0,
+      totalSteps: 14,
+      avatarUrl: selectedCandidateData.avatarUrl,
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedCandidateId, candidates]);
+
+  // Reset selected index when search changes
   useEffect(() => {
     setSelectedIndex(0);
   }, [searchQuery]);
@@ -150,72 +204,62 @@ export function WorkflowsDashboard({ section = "onboarding" }: { section?: strin
   // Keyboard navigation
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
-      if (!showEmployeeSearch || filteredEmployees.length === 0) return;
-
+      if (!showCandidateSearch || filteredCandidates.length === 0) return;
       switch (e.key) {
         case "ArrowDown":
           e.preventDefault();
-          setSelectedIndex((prev) => (prev + 1) % filteredEmployees.length);
+          setSelectedIndex((prev) => (prev + 1) % filteredCandidates.length);
           break;
         case "ArrowUp":
           e.preventDefault();
-          setSelectedIndex((prev) => (prev - 1 + filteredEmployees.length) % filteredEmployees.length);
+          setSelectedIndex((prev) => (prev - 1 + filteredCandidates.length) % filteredCandidates.length);
           break;
         case "Enter":
           e.preventDefault();
-          if (filteredEmployees[selectedIndex]) {
-            setSelectedEmployee(filteredEmployees[selectedIndex].id);
-            setShowEmployeeSearch(false);
+          if (filteredCandidates[selectedIndex]) {
+            setSelectedCandidateId(filteredCandidates[selectedIndex].id);
+            setShowCandidateSearch(false);
             setSearchQuery("");
           }
           break;
         case "Escape":
           e.preventDefault();
-          setShowEmployeeSearch(false);
+          setShowCandidateSearch(false);
           setSearchQuery("");
           break;
       }
     },
-    [showEmployeeSearch, filteredEmployees, selectedIndex]
+    [showCandidateSearch, filteredCandidates, selectedIndex]
   );
 
-  useEffect(() => {
-    async function fetchEmployees() {
-      setIsLoading(true);
-      setError(null);
-      try {
-        const response = await apiFetch("/api/employees?limit=100");
-        if (!response.ok) {
-          const errorData = await response.json().catch(() => ({}));
-          const errorMessage = errorData.error || `Failed to fetch employees (${response.status})`;
-          console.error("API Error:", errorData);
-          throw new Error(errorMessage);
-        }
-        const result = await response.json();
-        const mappedEmployees = result.data.map(mapEmployeeToWorkflow);
-        setEmployees(mappedEmployees);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "An error occurred");
-        console.error("Error fetching employees:", err);
-      } finally {
-        setIsLoading(false);
-      }
-    }
+  // Stable selected step IDs string so useEffect only re-runs when the actual list changes
+  const selectedStepIdsKey = workflowConfig?.selectedStepIds?.join(",") ?? "";
 
-    fetchEmployees();
-  }, []);
-
-  // Initialize phases when employee is selected
+  // Initialize phases when employee is selected or config changes
   useEffect(() => {
-    if (!selectedEmployeeData) {
+    if (!selectedEmployeeData || showSetupWizard) {
       setPhases([]);
       setActivePhaseId(null);
       setActiveStepId(null);
       return;
     }
 
-    // Use DEFAULT_CAREGIVER_PHASES as-is without auto-verifying steps
-    const initialPhases = DEFAULT_CAREGIVER_PHASES.map((phase) => ({
+    // Inline filtering so we don't depend on an unstable callback ref
+    let sourcePahses: CompliancePhase[];
+    if (!selectedStepIdsKey) {
+      sourcePahses = DEFAULT_CAREGIVER_PHASES;
+    } else {
+      const ids = selectedStepIdsKey.split(",");
+      let counter = 1;
+      sourcePahses = DEFAULT_CAREGIVER_PHASES
+        .map(phase => ({
+          ...phase,
+          steps: phase.steps.filter(s => ids.includes(s.id)).map(s => ({ ...s, stepNumber: counter++ })),
+        }))
+        .filter(phase => phase.steps.length > 0);
+    }
+
+    const initialPhases = sourcePahses.map((phase) => ({
       ...phase,
       steps: phase.steps.map((step) => ({ ...step })),
     }));
@@ -224,77 +268,12 @@ export function WorkflowsDashboard({ section = "onboarding" }: { section?: strin
     setActivePhaseId(
       initialPhases.find((p) => p.status === "in_progress")?.id || initialPhases[0]?.id || null
     );
-  }, [selectedEmployeeData]);
+  // selectedEmployeeData.id is stable; selectedStepIdsKey is a primitive string
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedEmployeeData?.id, showSetupWizard, selectedStepIdsKey]);
 
   // Fetch existing documents when employee is selected
-  useEffect(() => {
-    if (!selectedEmployeeData?.id) return;
-
-    const fetchExistingDocuments = async () => {
-      try {
-        const res = await apiFetch(`/api/employees/${selectedEmployeeData.id}/documents`);
-        if (!res.ok) return;
-
-        const json = await res.json();
-        const docs = Array.isArray(json?.data) ? json.data : [];
-
-        // Filter documents that have a compliance_step_id
-        const complianceDocs = docs.filter(
-          (d: { complianceStepId?: string }) => d.complianceStepId
-        );
-
-        if (complianceDocs.length === 0) return;
-
-        // Inject documents into corresponding steps
-        setPhases((prevPhases) =>
-          prevPhases.map((phase) => ({
-            ...phase,
-            steps: phase.steps.map((step) => {
-              const stepDocs = complianceDocs.filter(
-                (d: { complianceStepId?: string }) => d.complianceStepId === step.id
-              );
-
-              if (stepDocs.length === 0) return step;
-
-              // Convert to ComplianceDocument format
-              const convertedDocs: ComplianceDocument[] = stepDocs.map(
-                (doc: {
-                  id: string;
-                  name: string;
-                  type: string;
-                  uploadedDate: string;
-                  expiryDate?: string;
-                }) => ({
-                  id: doc.id,
-                  name: doc.name,
-                  type: doc.type as ComplianceDocument["type"],
-                  uploadedAt: new Date(doc.uploadedDate).toLocaleDateString(),
-                  uploadedBy: "System",
-                  status: "pending_review" as const,
-                  stepId: step.id,
-                  phaseId: phase.id,
-                  expiresAt: doc.expiryDate,
-                })
-              );
-
-              // Update step with existing documents
-              return {
-                ...step,
-                documents: [...step.documents, ...convertedDocs],
-                status: step.status === "not_started" && convertedDocs.length > 0
-                  ? ("uploaded" as StepStatus)
-                  : step.status,
-              };
-            }),
-          }))
-        );
-      } catch (error) {
-        console.error("Failed to fetch existing documents:", error);
-      }
-    };
-
-    fetchExistingDocuments();
-  }, [selectedEmployeeData?.id]);
+  // Document fetching will be wired to backend once candidates have a real API.
 
   // Computed values for phase workflow
   const { gateStatus } = useComplianceGates(phases);
@@ -424,25 +403,42 @@ export function WorkflowsDashboard({ section = "onboarding" }: { section?: strin
     [uploadStepId]
   );
 
-  // Handle send form
+  // Handle send form - open dialog
   const handleStepSendForm = useCallback((stepId: string) => {
-    console.log("Send form for step:", stepId);
-
-    setPhases((prevPhases) =>
-      prevPhases.map((phase) => ({
-        ...phase,
-        steps: phase.steps.map((step) =>
-          step.id === stepId
-            ? {
-                ...step,
-                status: "waiting" as StepStatus,
-                lastUpdated: new Date().toLocaleDateString(),
-              }
-            : step
-        ),
-      }))
-    );
+    setSendFormStepId(stepId);
+    setSendFormDialogOpen(true);
   }, []);
+
+  // Handle form send completion
+  const handleFormSend = useCallback(
+    (formData: { type: 'system' | 'pdf'; formId?: string; fileName?: string; file?: File }) => {
+      if (!sendFormStepId || !selectedCandidateId) return;
+
+      // Update step status to waiting
+      setPhases((prevPhases) =>
+        prevPhases.map((phase) => ({
+          ...phase,
+          steps: phase.steps.map((step) =>
+            step.id === sendFormStepId
+              ? {
+                  ...step,
+                  status: "waiting" as StepStatus,
+                  lastUpdated: new Date().toLocaleDateString(),
+                }
+              : step
+          ),
+        }))
+      );
+
+      // Add activity log entry
+      useCandidatesStore.getState().addActivityLog(selectedCandidateId, {
+        action: "Form Sent",
+        description: `${formData.type === 'system' ? 'System form' : 'PDF form'} sent for step`,
+        performedBy: "Current User",
+      });
+    },
+    [sendFormStepId, selectedCandidateId]
+  );
 
   // Handle delete document
   const handleStepDeleteDocument = useCallback((stepId: string) => {
@@ -483,10 +479,10 @@ export function WorkflowsDashboard({ section = "onboarding" }: { section?: strin
   const nextPhaseUnlocked =
     !isLastPhase && phases[activePhaseIndex + 1]?.status !== "locked";
 
-  // Clear employee selection when navigating away from onboarding
+  // Clear candidate selection when navigating away from employee onboarding
   useEffect(() => {
-    if (section !== "onboarding") {
-      setSelectedEmployee(null);
+    if (section !== "employee-onboarding") {
+      setSelectedCandidateId(null);
       setSearchQuery("");
     }
   }, [section]);
@@ -517,7 +513,7 @@ export function WorkflowsDashboard({ section = "onboarding" }: { section?: strin
     );
   }
 
-  if (section === "none") {
+  if (section === "none" || section === "dashboard") {
     return (
       <div className="flex flex-col items-center justify-center py-24 text-center">
         <div className="inline-flex items-center justify-center h-14 w-14 rounded-2xl bg-neutral-100 mb-5">
@@ -586,138 +582,183 @@ export function WorkflowsDashboard({ section = "onboarding" }: { section?: strin
     );
   }
 
-  // ── Employee Onboarding (default) ──
+  // ── Candidate Onboarding ──
   return (
-        <div className="grid gap-5 md:grid-cols-[240px_1fr]">
+    <>
+      <AddCandidateDialog
+        open={showAddCandidate}
+        onOpenChange={setShowAddCandidate}
+        onAdded={(id) => {
+          setSelectedCandidateId(id);
+          setShowCandidateSearch(false);
+          setSearchQuery("");
+        }}
+      />
+      <WorkflowSetupWizard
+        isOpen={showSetupWizard}
+        onComplete={handleWizardComplete}
+        onClose={() => setShowSetupWizard(false)}
+      />
+      <div className="flex gap-5">
           {/* Left Sidebar */}
-          <div className="rounded-2xl bg-white border border-neutral-200/70 shadow-sm overflow-hidden h-fit self-start">
-            {/* Employee Search / selected header */}
-            {!selectedEmployeeData || showEmployeeSearch ? (
-              <div className="border-b border-neutral-100">
-                <div className="p-4 pb-2">
-                  <div className="flex items-center gap-2 bg-neutral-50 border border-neutral-200/60 rounded-xl px-3 h-9">
-                    <Search className="h-3.5 w-3.5 text-neutral-400 shrink-0" />
-                    <input
-                      ref={searchInputRef}
-                      type="text"
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      onFocus={() => setShowEmployeeSearch(true)}
-                      onKeyDown={handleKeyDown}
-                      className="w-full bg-transparent outline-none text-xs placeholder:text-neutral-400 text-neutral-800"
-                      placeholder="Search employees..."
-                      autoComplete="off"
-                    />
-                    {searchQuery && (
-                      <button
-                        onClick={() => {
-                          setSearchQuery("");
-                          setShowEmployeeSearch(false);
-                        }}
-                        className="shrink-0 p-0.5 rounded-full hover:bg-neutral-200 text-neutral-400 hover:text-neutral-600 transition-colors"
-                      >
-                        <X className="h-3.5 w-3.5" />
-                      </button>
-                    )}
-                  </div>
-                </div>
+          <div className="w-[240px] shrink-0 rounded-2xl bg-white border border-neutral-200/70 shadow-sm overflow-hidden h-fit self-start">
 
-                {showEmployeeSearch && searchQuery && (
-                  <div className="px-4 pb-4 max-h-[280px] overflow-y-auto">
-                    {filteredEmployees.length > 0 ? (
-                      <div className="space-y-0.5">
-                        {filteredEmployees.map((employee, index) => {
-                          const initials = employee.name
-                            .split(" ")
-                            .map((n) => n[0])
-                            .join("")
-                            .slice(0, 2)
-                            .toUpperCase();
+            {/* Header row: title + Add button */}
+            <div className="flex items-center justify-between px-4 py-3.5 border-b border-neutral-100 bg-neutral-50/30">
+              <span className="text-[13px] font-semibold text-neutral-900">Candidates</span>
+              <Button
+                size="sm"
+                onClick={() => setShowAddCandidate(true)}
+                className="h-7 px-3 text-[11px] bg-neutral-900 hover:bg-neutral-800 text-white rounded-lg gap-1.5 font-medium"
+              >
+                <span className="text-sm leading-none">+</span>
+                Add
+              </Button>
+            </div>
 
-                          return (
-                            <button
-                              key={employee.id}
-                              onClick={() => {
-                                setSelectedEmployee(employee.id);
-                                setShowEmployeeSearch(false);
-                                setSearchQuery("");
-                              }}
-                              className={cn(
-                                "w-full flex items-center gap-2.5 px-3 py-2.5 text-left transition-colors rounded-lg",
-                                selectedIndex === index ? "bg-neutral-100" : "hover:bg-neutral-50"
-                              )}
-                            >
-                              <div className="h-7 w-7 rounded-full bg-neutral-900 text-white text-[10px] font-semibold grid place-items-center shrink-0">
-                                {initials}
-                              </div>
-                              <div className="min-w-0 flex-1">
-                                <div className="text-[13px] font-medium text-neutral-900">
-                                  {employee.name}
-                                </div>
-                                <div className="text-[11px] text-neutral-500">
-                                  {employee.title} • {employee.department}
-                                </div>
-                              </div>
-                            </button>
-                          );
-                        })}
-                      </div>
-                    ) : (
-                      <div className="px-3 py-4 text-center text-[12px] text-neutral-500 italic">
-                        No employee found
-                      </div>
-                    )}
-                  </div>
+            {/* Search */}
+            <div className="px-3 py-3 border-b border-neutral-100">
+              <div className="flex items-center gap-2 bg-neutral-50 border border-neutral-200/70 rounded-lg px-3 h-9 focus-within:border-neutral-300 focus-within:bg-white transition-colors">
+                <Search className="h-4 w-4 text-neutral-400 shrink-0" />
+                <input
+                  ref={searchInputRef}
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onFocus={() => setShowCandidateSearch(true)}
+                  onBlur={() => setTimeout(() => setShowCandidateSearch(false), 150)}
+                  onKeyDown={handleKeyDown}
+                  className="w-full bg-transparent outline-none text-[13px] placeholder:text-neutral-400 text-neutral-800"
+                  placeholder="Search candidates..."
+                  autoComplete="off"
+                />
+                {searchQuery && (
+                  <button
+                    onClick={() => setSearchQuery("")}
+                    className="shrink-0 p-0.5 rounded-full hover:bg-neutral-200 text-neutral-400 hover:text-neutral-600 transition-colors"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </button>
                 )}
               </div>
-            ) : (
-              <div className="p-4 border-b border-neutral-100">
-                <div className="flex items-center justify-between gap-2">
-                  <div className="min-w-0 flex-1">
-                    <div className="text-xs font-medium text-neutral-500 mb-0.5">Employee</div>
-                    <div className="text-[13px] font-semibold text-neutral-900 truncate">
-                      {selectedEmployeeData.name}
-                    </div>
-                  </div>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => {
-                      setShowEmployeeSearch(true);
-                      setSearchQuery("");
-                    }}
-                    className="h-7 px-2 text-xs text-neutral-500 hover:text-neutral-900"
-                  >
-                    Change
-                  </Button>
+            </div>
+
+            {/* Candidate list */}
+            {candidates.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-10 px-4 text-center">
+                <div className="h-10 w-10 rounded-xl bg-neutral-100 grid place-items-center mb-3">
+                  <Users className="h-5 w-5 text-neutral-400" />
                 </div>
+                <p className="text-[12px] font-medium text-neutral-700 mb-0.5">No candidates yet</p>
+                <p className="text-[11px] text-neutral-400 mb-4">
+                  Add a candidate to start their onboarding workflow.
+                </p>
+                <Button
+                  size="sm"
+                  onClick={() => setShowAddCandidate(true)}
+                  className="h-7 px-3 text-[11px] bg-neutral-900 hover:bg-neutral-800 text-white rounded-lg"
+                >
+                  Add Candidate
+                </Button>
+              </div>
+            ) : (
+              <div className="py-1 max-h-[360px] overflow-y-auto">
+                {(searchQuery ? filteredCandidates : candidates).length === 0 ? (
+                  <div className="px-4 py-5 text-center text-[12px] text-neutral-400 italic">
+                    No candidates match your search
+                  </div>
+                ) : (
+                  (searchQuery ? filteredCandidates : candidates).map((candidate, index) => {
+                    const initials = `${candidate.firstName[0] ?? ""}${candidate.lastName[0] ?? ""}`.toUpperCase();
+                    const isSelected = selectedCandidateId === candidate.id;
+
+                    return (
+                      <button
+                        key={candidate.id}
+                        onClick={() => {
+                          setSelectedCandidateId(candidate.id);
+                          setSearchQuery("");
+                          setShowCandidateSearch(false);
+                        }}
+                        className={cn(
+                          "relative w-full flex items-center gap-3 px-4 py-3 text-left transition-all outline-none",
+                          isSelected 
+                            ? "bg-neutral-50 border-l-2 border-neutral-900" 
+                            : "hover:bg-neutral-50/50 border-l-2 border-transparent",
+                          showCandidateSearch && selectedIndex === index && !isSelected && "bg-neutral-100"
+                        )}
+                      >
+                        {candidate.avatarUrl ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            src={candidate.avatarUrl}
+                            alt={`${candidate.firstName} ${candidate.lastName}`}
+                            className="h-9 w-9 rounded-full object-cover shrink-0 border border-neutral-200"
+                          />
+                        ) : (
+                          <div className="h-9 w-9 rounded-full bg-neutral-900 text-white text-[11px] font-semibold grid place-items-center shrink-0">
+                            {initials}
+                          </div>
+                        )}
+                        <div className="min-w-0 flex-1">
+                          <div className={cn(
+                            "text-[13px] font-semibold truncate mb-0.5",
+                            isSelected ? "text-neutral-900" : "text-neutral-700"
+                          )}>
+                            {candidate.firstName} {candidate.lastName}
+                          </div>
+                          {candidate.email && (
+                            <div className="text-[11px] text-neutral-500 truncate">
+                              {candidate.email}
+                            </div>
+                          )}
+                        </div>
+                      </button>
+                    );
+                  })
+                )}
               </div>
             )}
 
             {/* Completion Progress Bar */}
             {selectedEmployeeData && phases.length > 0 && (
-              <div className="px-4 py-4 border-b border-neutral-100">
-                <div className="flex items-center justify-between mb-2">
-                  <div className="flex items-center gap-1">
-                    <span className="text-xs font-medium text-neutral-500">Completion</span>
+              <div className="px-4 py-4 border-b border-neutral-100 bg-neutral-50/20">
+                <div className="flex items-center justify-between mb-2.5">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-[11px] font-semibold text-neutral-600 uppercase tracking-wide">Completion</span>
                     <button
                       type="button"
                       className="text-neutral-400 hover:text-neutral-500 transition-colors"
                       title="Overall onboarding completion across all phases"
                     >
-                      <Info className="h-3 w-3" />
+                      <Info className="h-3.5 w-3.5" />
                     </button>
                   </div>
-                  <span className="text-base font-bold text-neutral-900">
+                  <span className="text-lg font-bold text-neutral-900">
                     {Math.round(totalProgress.percentage)}%
                   </span>
                 </div>
-                <div className="h-1.5 bg-neutral-100 rounded-full overflow-hidden">
+                <div className="h-2 bg-neutral-200 rounded-full overflow-hidden">
                   <div
-                    className="h-full bg-emerald-500 rounded-full transition-all duration-500"
+                    className="h-full bg-gradient-to-r from-emerald-500 to-emerald-600 rounded-full transition-all duration-500"
                     style={{ width: `${totalProgress.percentage}%` }}
                   />
                 </div>
+              </div>
+            )}
+
+            {/* Reconfigure Workflow Button */}
+            {selectedEmployeeData && workflowConfig && (
+              <div className="px-4 py-3 border-b border-neutral-100">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleReconfigureWorkflow}
+                  className="w-full h-8 text-xs text-neutral-600 hover:text-neutral-900 hover:bg-neutral-50"
+                >
+                  <GitBranch className="h-3.5 w-3.5 mr-2" />
+                  Reconfigure Workflow
+                </Button>
               </div>
             )}
 
@@ -778,82 +819,270 @@ export function WorkflowsDashboard({ section = "onboarding" }: { section?: strin
             )}
           </div>
 
-          {/* Right Panel */}
-          <div className="w-full min-w-0">
-            {selectedEmployeeData && activePhase ? (
+          {/* Center and Right Panel Container */}
+          <div className="flex-1 min-w-0 space-y-5">
+            {selectedEmployeeData && selectedCandidateData ? (
               <>
-                <div className="rounded-2xl bg-white border border-neutral-200/70 shadow-sm overflow-hidden">
-                  <div className="px-6 py-5 border-b border-neutral-100">
-                    <div className="flex items-start justify-between">
-                      <div>
-                        <h2 className="text-xl font-bold text-neutral-900">
-                          {activePhase.phaseName}
-                        </h2>
-                        <p className="text-sm text-neutral-500 mt-0.5">{activePhase.goal}</p>
+                {/* Profile Header - Full Width */}
+                <Card className="border-neutral-200/70 shadow-sm overflow-hidden">
+                  <div className="p-6 pb-5">
+                    <div className="flex items-start justify-between mb-4">
+                      <div className="flex items-center gap-4">
+                        <Avatar className="h-20 w-20 border-2 border-neutral-200">
+                          {selectedCandidateData.avatarUrl ? (
+                            <AvatarImage src={selectedCandidateData.avatarUrl} alt={`${selectedCandidateData.firstName} ${selectedCandidateData.lastName}`} />
+                          ) : (
+                            <AvatarFallback className="bg-neutral-900 text-white text-xl font-semibold">
+                              {`${selectedCandidateData.firstName[0]}${selectedCandidateData.lastName[0]}`.toUpperCase()}
+                            </AvatarFallback>
+                          )}
+                        </Avatar>
+                        <div>
+                          <h1 className="text-2xl font-bold text-neutral-900 mb-2">
+                            {selectedCandidateData.firstName} {selectedCandidateData.lastName}
+                          </h1>
+                          <div className="flex items-center gap-2">
+                            <Badge
+                              variant={
+                                selectedCandidateData.onboardingStatus === 'completed'
+                                  ? 'positive'
+                                  : selectedCandidateData.onboardingStatus === 'withdrawn'
+                                  ? 'negative'
+                                  : 'secondary'
+                              }
+                              className="text-xs font-medium"
+                            >
+                              {selectedCandidateData.currentStageLabel || (selectedCandidateData.onboardingStatus || 'active').toUpperCase()}
+                            </Badge>
+                          </div>
+                        </div>
                       </div>
-                      <div className="flex items-center gap-2 mt-0.5">
-                        {activePhase.status === "complete" && (
-                          <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 text-[11px] font-medium text-emerald-700">
-                            <CheckCircle2 className="h-3 w-3" />
-                            Complete
-                          </span>
-                        )}
-                        {activePhase.status === "in_progress" && (
-                          <span className="inline-flex items-center gap-1 rounded-full bg-blue-50 border border-blue-200 px-2.5 py-0.5 text-[11px] font-medium text-blue-700">
-                            Phase {activePhase.phaseNumber}
-                          </span>
-                        )}
-                        {activePhase.status === "locked" && (
-                          <span className="inline-flex items-center gap-1 rounded-full bg-neutral-100 border border-neutral-200 px-2.5 py-0.5 text-[11px] font-medium text-neutral-500">
-                            Locked
-                          </span>
-                        )}
-                        {(activePhase.status as string) === "not_started" && (
-                          <span className="inline-flex items-center gap-1 rounded-full bg-neutral-100 border border-neutral-200 px-2.5 py-0.5 text-[11px] font-medium text-neutral-500">
-                            Phase {activePhase.phaseNumber}
-                          </span>
-                        )}
+                      <div className="flex items-center gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-9 gap-2 border-neutral-200"
+                        >
+                          <Edit className="h-4 w-4" />
+                          Edit Profile
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-9 gap-2 border-neutral-200"
+                        >
+                          <StickyNote className="h-4 w-4" />
+                          Add Note
+                        </Button>
+                        <Button
+                          size="sm"
+                          className="h-9 gap-2 bg-neutral-900 hover:bg-neutral-800"
+                        >
+                          Move Stage
+                        </Button>
                       </div>
+                    </div>
+
+                    {/* Contact Info */}
+                    <div className="flex items-center gap-6 text-sm text-neutral-600 mb-1">
+                      {selectedCandidateData.email && (
+                        <div className="flex items-center gap-2">
+                          <Mail className="h-4 w-4 text-neutral-400" />
+                          <span>{selectedCandidateData.email}</span>
+                        </div>
+                      )}
+                      {selectedCandidateData.phone && (
+                        <div className="flex items-center gap-2">
+                          <Phone className="h-4 w-4 text-neutral-400" />
+                          <span>{selectedCandidateData.phone}</span>
+                        </div>
+                      )}
                     </div>
                   </div>
 
-                  <div className="p-6">
-                    <StepCardsPanel
-                      phase={activePhase}
-                      activeStepId={activeStepId}
-                      onStepSelect={setActiveStepId}
-                      onStepStatusChange={handleStepStatusChange}
-                      onStepUpload={handleStepUpload}
-                      onStepSendForm={handleStepSendForm}
-                      onStepDeleteDocument={handleStepDeleteDocument}
-                      hideHeader
-                    />
+                  {/* Progress Section */}
+                  <div className="px-6 py-5 bg-neutral-50/30 border-t border-neutral-100">
+                    <div className="flex items-center justify-between mb-3">
+                      <span className="text-[11px] font-semibold text-neutral-500 uppercase tracking-wider">
+                        Onboarding Progress
+                      </span>
+                      <span className="text-2xl font-bold text-neutral-900">
+                        {Math.round((phases.reduce((sum, p) => sum + p.steps.filter(s => s.status === "verified").length, 0) / phases.reduce((sum, p) => sum + p.steps.length, 0)) * 100) || 0}%
+                      </span>
+                    </div>
+                    <div className="h-2.5 bg-neutral-200 rounded-full overflow-hidden mb-5">
+                      <div
+                        className="h-full bg-gradient-to-r from-emerald-500 to-emerald-600 rounded-full transition-all duration-500"
+                        style={{ width: `${Math.round((phases.reduce((sum, p) => sum + p.steps.filter(s => s.status === "verified").length, 0) / phases.reduce((sum, p) => sum + p.steps.length, 0)) * 100) || 0}%` }}
+                      />
+                    </div>
+
+                    {/* Stats Row */}
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="flex items-center gap-3 p-4 rounded-xl bg-white border border-neutral-200/60 shadow-sm">
+                        <div className="h-12 w-12 rounded-xl bg-blue-50 flex items-center justify-center shrink-0">
+                          <Clock className="h-6 w-6 text-blue-600" />
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-[11px] text-neutral-500 uppercase tracking-wide font-semibold mb-0.5">
+                            Days in Stage
+                          </p>
+                          <p className="text-2xl font-bold text-neutral-900 leading-none">
+                            {Math.floor((Date.now() - new Date(selectedCandidateData.createdAt).getTime()) / (1000 * 60 * 60 * 24)) < 10 
+                              ? `0${Math.floor((Date.now() - new Date(selectedCandidateData.createdAt).getTime()) / (1000 * 60 * 60 * 24))}` 
+                              : Math.floor((Date.now() - new Date(selectedCandidateData.createdAt).getTime()) / (1000 * 60 * 60 * 24))}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-3 p-4 rounded-xl bg-white border border-neutral-200/60 shadow-sm">
+                        <div className="h-12 w-12 rounded-xl bg-emerald-50 flex items-center justify-center shrink-0">
+                          <FileCheck className="h-6 w-6 text-emerald-600" />
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-[11px] text-neutral-500 uppercase tracking-wide font-semibold mb-0.5">
+                            Compliance Docs
+                          </p>
+                          <p className="text-2xl font-bold text-neutral-900 leading-none">
+                            {phases.reduce((sum, p) => sum + p.steps.filter(s => s.status === "verified").length, 0)}
+                            <span className="text-base text-neutral-400 font-medium">
+                              /{phases.reduce((sum, p) => sum + p.steps.length, 0)}
+                            </span>
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </Card>
+
+                {/* Two Column Layout: Timeline + Info Panel */}
+                <div className="grid grid-cols-[1fr_300px] gap-5">
+                  {/* Phase Timeline */}
+                  <div className="space-y-4">
+                    {phases.map((phase) => {
+                      const isActivePhaseView = activePhaseId === phase.id;
+                      const PhaseIcon =
+                        PHASE_ICONS[phase.id as keyof typeof PHASE_ICONS] || ClipboardCheck;
+
+                      return (
+                        <Card
+                          key={phase.id}
+                          className={cn(
+                            "border shadow-sm overflow-hidden transition-all",
+                            isActivePhaseView 
+                              ? "border-neutral-300 shadow-md" 
+                              : "border-neutral-200/70"
+                          )}
+                        >
+                          {/* Phase Header */}
+                          <button
+                            onClick={() => setActivePhaseId(phase.id)}
+                            className={cn(
+                              "w-full px-5 py-4 flex items-center justify-between transition-colors text-left",
+                              isActivePhaseView 
+                                ? "bg-neutral-50/50" 
+                                : "hover:bg-neutral-50/30"
+                            )}
+                          >
+                            <div className="flex items-center gap-3">
+                              <div
+                                className={cn(
+                                  "h-11 w-11 rounded-xl flex items-center justify-center transition-all",
+                                  phase.status === "complete"
+                                    ? "bg-emerald-50 border border-emerald-100"
+                                    : phase.status === "in_progress"
+                                    ? "bg-blue-50 border border-blue-100"
+                                    : "bg-neutral-100 border border-neutral-200"
+                                )}
+                              >
+                                <PhaseIcon
+                                  className={cn(
+                                    "h-5 w-5",
+                                    phase.status === "complete"
+                                      ? "text-emerald-600"
+                                      : phase.status === "in_progress"
+                                      ? "text-blue-600"
+                                      : "text-neutral-400"
+                                  )}
+                                />
+                              </div>
+                              <div>
+                                <div className="flex items-center gap-2 mb-1">
+                                  <Badge
+                                    variant="secondary"
+                                    className="text-[10px] font-semibold"
+                                  >
+                                    {phase.phaseNumber < 10 ? `0${phase.phaseNumber}` : phase.phaseNumber}
+                                  </Badge>
+                                  <h3 className="text-[15px] font-semibold text-neutral-900">
+                                    {phase.phaseName}
+                                  </h3>
+                                </div>
+                                <p className="text-xs text-neutral-500 leading-relaxed">{phase.goal}</p>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              {phase.status === "complete" && (
+                                <Badge variant="positive" className="text-xs font-medium">
+                                  Complete
+                                </Badge>
+                              )}
+                              {phase.status === "in_progress" && (
+                                <Badge variant="warning" className="text-xs font-medium">
+                                  In Progress
+                                </Badge>
+                              )}
+                              {phase.status === "locked" && (
+                                <Badge variant="secondary" className="text-xs font-medium">
+                                  Locked
+                                </Badge>
+                              )}
+                            </div>
+                          </button>
+
+                          {/* Phase Steps - show expanded if active or completed */}
+                          {(isActivePhaseView || phase.status === "complete") && (
+                            <div className="px-5 pb-4 space-y-2">
+                              {phase.steps.map((step) => (
+                                <StepCard
+                                  key={step.id}
+                                  step={step}
+                                  isActive={activeStepId === step.id}
+                                  onSelect={() => setActiveStepId(step.id)}
+                                  onStatusChange={(status) =>
+                                    handleStepStatusChange(phase.id, step.id, status)
+                                  }
+                                  onUpload={() => handleStepUpload(step.id)}
+                                  onSendForm={() => handleStepSendForm(step.id)}
+                                  onDeleteDocument={
+                                    handleStepDeleteDocument
+                                      ? () => handleStepDeleteDocument(step.id)
+                                      : undefined
+                                  }
+                                  collapsed={phase.status === "complete" && !isActivePhaseView}
+                                />
+                              ))}
+                            </div>
+                          )}
+                        </Card>
+                      );
+                    })}
                   </div>
 
-                  <div className="flex items-center justify-between px-6 py-4 border-t border-neutral-100 bg-neutral-50/40">
-                    <Button
-                      variant="outline"
-                      onClick={
-                        isFirstPhase
-                          ? () => {
-                              setSelectedEmployee(null);
-                              setSearchQuery("");
-                            }
-                          : goToPrevPhase
+                  {/* Right Info Panel */}
+                  <div className="w-full">
+                    <CandidateInfoPanel
+                      missingItems={
+                        phases
+                          .flatMap((p) => p.steps)
+                          .filter((s) => s.status === "blocked" || s.status === "not_started")
+                          .map((s) => s.title)
                       }
-                      className="h-9 px-4 text-sm font-medium border-neutral-200 text-neutral-700 hover:bg-neutral-100 hover:text-neutral-900 rounded-xl"
-                    >
-                      <ArrowLeft className="h-4 w-4 mr-2" />
-                      Back
-                    </Button>
-                    <Button
-                      onClick={isLastPhase ? handleAssign : goToNextPhase}
-                      disabled={!isLastPhase && !nextPhaseUnlocked}
-                      className="h-9 px-5 text-sm font-semibold bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      {isLastPhase ? "Complete Onboarding" : "Save and Continue"}
-                      {!isLastPhase && <ChevronRight className="h-4 w-4 ml-1.5" />}
-                    </Button>
+                      activityLog={selectedCandidateData.activityLog || []}
+                      documents={selectedCandidateData.documents || []}
+                      onUploadDocument={() => {
+                        setUploadDialogOpen(true);
+                      }}
+                    />
                   </div>
                 </div>
 
@@ -891,21 +1120,59 @@ export function WorkflowsDashboard({ section = "onboarding" }: { section?: strin
                   employeeId={selectedEmployeeData.id}
                   onUploadSuccess={handleUploadSuccess}
                 />
+
+                <SendFormDialog
+                  isOpen={sendFormDialogOpen}
+                  onClose={() => {
+                    setSendFormDialogOpen(false);
+                    setSendFormStepId(null);
+                  }}
+                  stepTitle={
+                    sendFormStepId
+                      ? phases
+                          .flatMap((p) => p.steps)
+                          .find((s) => s.id === sendFormStepId)?.title || ""
+                      : ""
+                  }
+                  candidateName={selectedEmployeeData.name}
+                  candidateEmail={selectedEmployeeData.email}
+                  onSend={handleFormSend}
+                />
               </>
             ) : (
               <div className="rounded-2xl bg-white border border-neutral-200/70 shadow-sm py-20 text-center">
                 <div className="inline-flex items-center justify-center h-16 w-16 rounded-2xl bg-neutral-100 mb-5">
                   <Users className="h-8 w-8 text-neutral-400" />
                 </div>
-                <h3 className="text-base font-semibold text-neutral-900 mb-1.5">
-                  Select an employee to begin
-                </h3>
-                <p className="text-sm text-neutral-500 max-w-xs mx-auto">
-                  Search for an employee in the sidebar to view and manage their onboarding workflow.
-                </p>
+                {candidates.length === 0 ? (
+                  <>
+                    <h3 className="text-base font-semibold text-neutral-900 mb-1.5">
+                      No candidates yet
+                    </h3>
+                    <p className="text-sm text-neutral-500 max-w-xs mx-auto mb-5">
+                      Add a candidate to start their onboarding workflow.
+                    </p>
+                    <Button
+                      onClick={() => setShowAddCandidate(true)}
+                      className="h-9 px-5 bg-neutral-900 hover:bg-neutral-800 text-white text-sm font-medium rounded-xl"
+                    >
+                      Add Candidate
+                    </Button>
+                  </>
+                ) : (
+                  <>
+                    <h3 className="text-base font-semibold text-neutral-900 mb-1.5">
+                      Select a candidate
+                    </h3>
+                    <p className="text-sm text-neutral-500 max-w-xs mx-auto">
+                      Choose a candidate from the list on the left to view their onboarding workflow.
+                    </p>
+                  </>
+                )}
               </div>
             )}
           </div>
         </div>
+    </>
   );
 }

@@ -70,7 +70,7 @@ const ROUTE_MAP: Record<PrimaryItem, string> = {
 };
 
 const WORKFLOW_SECTION_MAP: Record<NonNullable<OnboardingSub> | Exclude<WorkflowItem, "Onboarding">, string> = {
-  Employee:          "onboarding",
+  Employee:          "employee-onboarding",
   Client:            "client",
   Partner:           "partner",
   Communication:     "client-communication",
@@ -108,7 +108,7 @@ interface SidebarItemProps {
   sub?: boolean;
 }
 
-function SidebarItem({
+const SidebarItem = React.memo(function SidebarItem({
   icon: Icon,
   label,
   badge,
@@ -191,7 +191,7 @@ function SidebarItem({
       {content}
     </button>
   );
-}
+});
 
 // ─── Icon Rail (only shown when primary sidebar is collapsed) ─────────────────
 
@@ -667,7 +667,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   const handleWorkflowsIconClick = useCallback(() => {
     setActivePrimary("Workflows");
     setWorkflowsPanelPinned((prev) => !prev);
-    router.push(ROUTE_MAP["Workflows"]);
+    router.push(`${ROUTE_MAP["Workflows"]}?section=dashboard`);
   }, [router]);
 
   const handleActivateWorkflow = (item: WorkflowItem) => {

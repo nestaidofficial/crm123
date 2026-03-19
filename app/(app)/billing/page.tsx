@@ -223,48 +223,63 @@ export default function BillingPage() {
   };
 
   return (
-    <div className="space-y-4">
-      {/* Top-level section tabs — header integrated */}
-      <Tabs value={billingSection} onValueChange={setBillingSection}>
-        {/* Header row */}
-        <div className="flex items-end justify-between border-b border-neutral-200 pb-0 pt-4">
-          <div className="flex items-end gap-1">
-            <div className="flex items-center gap-1.5 pr-4 pt-2 pb-2">
-              <h1 className="text-[20px] font-semibold text-neutral-900 leading-none">Billing</h1>
-            </div>
-            <TabsList variant="line" className="border-b-0">
-              <TabsTrigger value="private-pay" variant="line">
-                <Receipt className="h-3.5 w-3.5" />
-                Private Pay
-              </TabsTrigger>
-              <TabsTrigger value="medicaid" variant="line">
-                <Building2 className="h-3.5 w-3.5" />
-                Medicaid Claims
-              </TabsTrigger>
-              <TabsTrigger value="configuration" variant="line">
-                <Settings2 className="h-3.5 w-3.5" />
-                Configuration
-              </TabsTrigger>
-            </TabsList>
-          </div>
-          <div className="flex items-center gap-2 pb-2">
-            {billingSection === "private-pay" && (
-              <Button onClick={() => setIsWizardOpen(true)} className="h-7 rounded-full bg-[#FED96A] hover:bg-[#F5CC5A] text-neutral-900 px-3 text-[12px]">
-                <FileText className="mr-1 h-3.5 w-3.5" />
-                <span className="font-medium">Generate Invoices</span>
-              </Button>
-            )}
-            {billingSection === "medicaid" && (
-              <Button onClick={() => setClaimsTab("generate")} className="h-7 rounded-full bg-[#FED96A] hover:bg-[#F5CC5A] text-neutral-900 px-3 text-[12px]">
-                <Plus className="mr-1 h-3.5 w-3.5" />
-                <span className="font-medium">Generate Claims</span>
-              </Button>
-            )}
-          </div>
+    <Tabs value={billingSection} onValueChange={setBillingSection} className="space-y-4">
+      {/* Header row with tabs */}
+      <div className="flex items-center justify-between">
+        <TabsList className="gap-2 rounded-none bg-transparent h-auto p-0">
+          <TabsTrigger
+            className="data-[state=active]:bg-[#F4F4F6] data-[state=active]:text-neutral-900 border-border relative h-auto flex-col px-4 py-2 text-xs data-[state=active]:shadow-none"
+            value="private-pay"
+          >
+            <Receipt
+              aria-hidden="true"
+              className="mb-1.5 opacity-60"
+              size={16}
+            />
+            Private Pay
+          </TabsTrigger>
+          <TabsTrigger
+            className="data-[state=active]:bg-[#F4F4F6] data-[state=active]:text-neutral-900 border-border relative h-auto flex-col px-4 py-2 text-xs data-[state=active]:shadow-none"
+            value="medicaid"
+          >
+            <Building2
+              aria-hidden="true"
+              className="mb-1.5 opacity-60"
+              size={16}
+            />
+            Medicaid Claims
+          </TabsTrigger>
+          <TabsTrigger
+            className="data-[state=active]:bg-[#F4F4F6] data-[state=active]:text-neutral-900 border-border relative h-auto flex-col px-4 py-2 text-xs data-[state=active]:shadow-none"
+            value="configuration"
+          >
+            <Settings2
+              aria-hidden="true"
+              className="mb-1.5 opacity-60"
+              size={16}
+            />
+            Configuration
+          </TabsTrigger>
+        </TabsList>
+        
+        <div className="flex items-center gap-2">
+          {billingSection === "private-pay" && (
+            <Button onClick={() => setIsWizardOpen(true)} className="h-8 rounded-full bg-[#FED96A] hover:bg-[#F5CC5A] text-neutral-900 px-3 text-[12px]">
+              <FileText className="mr-1 h-3.5 w-3.5" />
+              <span className="font-medium">Generate Invoices</span>
+            </Button>
+          )}
+          {billingSection === "medicaid" && (
+            <Button onClick={() => setClaimsTab("generate")} className="h-8 rounded-full bg-[#FED96A] hover:bg-[#F5CC5A] text-neutral-900 px-3 text-[12px]">
+              <Plus className="mr-1 h-3.5 w-3.5" />
+              <span className="font-medium">Generate Claims</span>
+            </Button>
+          )}
         </div>
+      </div>
 
-        {/* Private Pay content */}
-        <TabsContent value="private-pay" className="mt-4 space-y-4">
+      {/* Private Pay content */}
+      <TabsContent value="private-pay" className="space-y-4">
           <BillingFilters
             dateRange={dateRange}
             onDateRangeChange={setDateRange}
@@ -365,10 +380,10 @@ export default function BillingPage() {
             onClose={() => setIsWizardOpen(false)}
             onGenerate={(data) => console.log("Generate invoices:", data)}
           />
-        </TabsContent>
+      </TabsContent>
 
-        {/* Medicaid Claims content */}
-        <TabsContent value="medicaid" className="mt-4">
+      {/* Medicaid Claims content */}
+      <TabsContent value="medicaid">
           <Tabs value={claimsTab} onValueChange={setClaimsTab}>
             <TabsList>
               <TabsTrigger value="manage" className="gap-2">
@@ -389,13 +404,12 @@ export default function BillingPage() {
               <GenerateClaimsWizard />
             </TabsContent>
           </Tabs>
-        </TabsContent>
+      </TabsContent>
 
-        {/* Configuration content */}
-        <TabsContent value="configuration" className="mt-4">
-          <ProviderConfig />
-        </TabsContent>
-      </Tabs>
-    </div>
+      {/* Configuration content */}
+      <TabsContent value="configuration">
+        <ProviderConfig />
+      </TabsContent>
+    </Tabs>
   );
 }

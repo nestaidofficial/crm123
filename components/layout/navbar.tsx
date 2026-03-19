@@ -28,9 +28,17 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { Card } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
 import { useAuthStore } from "@/store/useAuthStore";
+import { apiFetch } from "@/lib/api-fetch";
 
 interface NavAction {
   id: string;
@@ -48,6 +56,34 @@ const navActions: NavAction[] = [
   { id: "tasks", label: "Tasks", icon: <CheckSquare className="h-4 w-4 text-orange-500" />, description: "To-dos & assignments", href: "/tasks", category: "Pages" },
   { id: "billing", label: "Billing", icon: <Receipt className="h-4 w-4 text-green-600" />, description: "Invoices & payments", href: "/billing", category: "Pages" },
   { id: "forms", label: "Forms", icon: <FileText className="h-4 w-4 text-sky-500" />, description: "Clinical & intake forms", href: "/forms", category: "Pages" },
+];
+
+interface NotificationItem {
+  id: string;
+  title: string;
+  description: string;
+  time: string;
+}
+
+const defaultNotifications: NotificationItem[] = [
+  {
+    id: "1",
+    title: "Welcome 🎉",
+    description: "Thanks for checking out the notifications component!",
+    time: "just now",
+  },
+  {
+    id: "2",
+    title: "System Update",
+    description: "We've rolled out a new feature for you.",
+    time: "1h ago",
+  },
+  {
+    id: "3",
+    title: "Reminder",
+    description: "Don't forget to finish your profile setup.",
+    time: "3h ago",
+  },
 ];
 
 function useDebounce<T>(value: T, delay: number = 200): T {
@@ -104,12 +140,31 @@ function NavIconButton({
 }
 
 export function Navbar() {
-  const { user, currentRole, memberships, currentAgencyId, signOut } = useAuthStore();
+  const { user, currentRole, memberships, currentAgencyId, signOut, avatarUrl, setAvatarUrl } = useAuthStore();
   const router = useRouter();
   const [query, setQuery] = useState("");
   const [isFocused, setIsFocused] = useState(false);
   const debouncedQuery = useDebounce(query, 200);
   const searchRef = useRef<HTMLDivElement>(null);
+
+  // Fetch avatar URL once per agency (cached in auth store)
+  useEffect(() => {
+    if (!currentAgencyId || avatarUrl) return;
+
+    async function fetchAvatar() {
+      try {
+        const response = await apiFetch("/api/profile");
+        if (response.ok) {
+          const result = await response.json();
+          setAvatarUrl(result.data.avatarUrl || "");
+        }
+      } catch (error) {
+        console.error("Failed to fetch avatar URL:", error);
+      }
+    }
+
+    fetchAvatar();
+  }, [currentAgencyId, avatarUrl, setAvatarUrl]);
 
   const filteredActions = isFocused
     ? debouncedQuery.trim()
@@ -167,7 +222,7 @@ export function Navbar() {
                 onChange={(e) => setQuery(e.target.value)}
                 onFocus={() => setIsFocused(true)}
                 onBlur={() => setTimeout(() => setIsFocused(false), 150)}
-                className="w-full h-8 pl-9 pr-4 rounded-lg text-[13px] bg-white border border-neutral-200/70 text-neutral-700 placeholder:text-neutral-400 focus:outline-none focus:border-neutral-300 transition-colors"
+                className="w-full h-8 pl-9 pr-4 rounded-md text-[13px] bg-white border border-neutral-200/70 text-neutral-700 placeholder:text-neutral-400 focus:outline-none focus:border-neutral-300 transition-colors"
               />
             </div>
 
@@ -206,17 +261,45 @@ export function Navbar() {
 
         {/* Right: Action icons + avatar */}
         <div className="flex items-center gap-0.5 shrink-0">
-          <NavIconButton badge>
-            <Zap className="h-[17px] w-[17px]" />
-          </NavIconButton>
-
-          <NavIconButton>
-            <UserCircle className="h-[17px] w-[17px]" />
-          </NavIconButton>
-
-          <NavIconButton>
-            <Bell className="h-[17px] w-[17px]" />
-          </NavIconButton>
+          {/* Notifications Popover */}
+          <Popover>
+            <PopoverTrigger asChild>
+              <button className="relative h-9 w-9 rounded-full flex items-center justify-center text-neutral-500 hover:text-neutral-800 hover:bg-neutral-100 transition-colors">
+                <Bell className="h-[17px] w-[17px]" />
+                {defaultNotifications.length > 0 && (
+                  <Badge
+                    variant="secondary"
+                    className="absolute -top-1 -right-1 text-xs px-1.5 py-0 h-4 min-w-[16px]"
+                  >
+                    {defaultNotifications.length}
+                  </Badge>
+                )}
+              </button>
+            </PopoverTrigger>
+            <PopoverContent className="w-80 p-0" align="end" side="bottom">
+              <Card className="max-h-80 overflow-y-auto rounded-lg border-none shadow-none">
+                {defaultNotifications.length === 0 ? (
+                  <div className="p-4 text-sm text-muted-foreground text-center">
+                    No notifications
+                  </div>
+                ) : (
+                  <ul className="divide-y divide-border">
+                    {defaultNotifications.map((item) => (
+                      <li key={item.id} className="p-4 hover:bg-muted/50 transition">
+                        <div className="flex justify-between items-center mb-1">
+                          <span className="font-medium text-base">{item.title}</span>
+                          <span className="text-sm text-muted-foreground">{item.time}</span>
+                        </div>
+                        <p className="text-sm text-muted-foreground leading-relaxed">
+                          {item.description}
+                        </p>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </Card>
+            </PopoverContent>
+          </Popover>
 
           {/* Divider */}
           <div className="mx-2 h-4 w-px bg-neutral-200" />
@@ -226,6 +309,7 @@ export function Navbar() {
             <DropdownMenuTrigger asChild>
               <button className="flex items-center gap-1.5 rounded-lg px-1.5 py-1 hover:bg-neutral-100 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-neutral-200 focus-visible:ring-offset-2">
                 <Avatar className="h-8 w-8 border border-neutral-200">
+                  {avatarUrl && <AvatarImage src={avatarUrl} alt={userName} />}
                   <AvatarFallback className="text-[12px] font-semibold bg-gradient-to-br from-neutral-700 to-neutral-900 text-white">
                     {userInitials}
                   </AvatarFallback>
@@ -241,6 +325,7 @@ export function Navbar() {
               <div className="px-2 py-2">
                 <div className="flex items-center gap-3">
                   <Avatar className="h-10 w-10 border border-neutral-200">
+                    {avatarUrl && <AvatarImage src={avatarUrl} alt={userName} />}
                     <AvatarFallback className="text-[13px] font-semibold bg-gradient-to-br from-neutral-700 to-neutral-900 text-white">
                       {userInitials}
                     </AvatarFallback>

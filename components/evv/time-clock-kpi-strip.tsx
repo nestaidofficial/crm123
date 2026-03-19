@@ -28,7 +28,7 @@ export function TimeClockKPIStrip({
   const clickable = !!onFilterChange;
 
   const cardBase =
-    "rounded-xl border border-black/5 bg-white px-4 py-3 transition-all";
+    "rounded-md border border-black/5 bg-white px-4 py-3 transition-all";
   const interactiveCard = "cursor-pointer select-none hover:border-neutral-300";
 
   return (

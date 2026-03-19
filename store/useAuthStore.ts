@@ -27,12 +27,14 @@ interface AuthState {
   currentRole: AppRole | null;
   isLoading: boolean;
   isInitialized: boolean;
+  avatarUrl: string;
 
   // Actions
   initialize: () => Promise<void>;
   signIn: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
   setCurrentAgency: (agencyId: string) => void;
+  setAvatarUrl: (url: string) => void;
   getMembershipsForUser: (userId: string) => Promise<AgencyMembership[]>;
 }
 
@@ -44,6 +46,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   currentRole: null,
   isLoading: true,
   isInitialized: false,
+  avatarUrl: "",
 
   async initialize() {
     if (get().isInitialized) return;
@@ -140,7 +143,12 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       memberships: [],
       currentAgencyId: null,
       currentRole: null,
+      avatarUrl: "",
     });
+  },
+
+  setAvatarUrl(url: string) {
+    set({ avatarUrl: url });
   },
 
   setCurrentAgency(agencyId: string) {

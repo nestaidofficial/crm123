@@ -3,6 +3,7 @@
 import * as React from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -14,7 +15,7 @@ import {
 import { TimeClockTable, TimeClockEntry } from "@/components/evv/time-clock-table";
 import { TimeClockDetailDrawer } from "@/components/evv/time-clock-detail-drawer";
 import { TimeClockKPIStrip } from "@/components/evv/time-clock-kpi-strip";
-import { Search, Download, CheckSquare, Settings, CheckCircle2, Flag, Loader2, XCircle } from "lucide-react";
+import { Search, Download, CheckSquare, Settings, CheckCircle2, Flag, Loader2, XCircle, RefreshCw } from "lucide-react";
 import { getSupabaseBrowserClient } from "@/lib/supabase";
 import { mapVisitRowToTimeClockEntry } from "@/lib/db/evv.mapper";
 import type { EVVVisitJoinedRow } from "@/lib/db/evv.mapper";
@@ -32,7 +33,7 @@ export default function EVVPage() {
   const [isDrawerOpen, setIsDrawerOpen] = React.useState(false);
   const [selectedEntries, setSelectedEntries] = React.useState<string[]>([]);
   const [verificationTab, setVerificationTab] = React.useState("all");
-  const [dateRange, setDateRange] = React.useState("today");
+  const [dateRange, setDateRange] = React.useState("this-week");
   const [customDateRange, setCustomDateRange] = React.useState<DateRange>({ start: null, end: null });
   const [calendarOpen, setCalendarOpen] = React.useState(false);
   const [arrivalStatusFilter, setArrivalStatusFilter] = React.useState("all");
@@ -47,81 +48,100 @@ export default function EVVPage() {
   const [fetchError, setFetchError] = React.useState<string | null>(null);
 
   // Fetch EVV visits from Supabase
-  React.useEffect(() => {
-    // Wait until the auth store has resolved the current agency
-    if (!agencyId) return;
-
-    async function fetchVisits() {
-      try {
-        setIsLoading(true);
-        setFetchError(null);
-
-        // Fetch visits with all joins — filtered by current agency
-        const { data: visitsData, error: visitsError } = await supabase
-          .from("evv_visits")
-          .select(`
-            *,
-            employee:employees!fk_evv_visits_employee_agency(id, first_name, last_name, avatar_url),
-            client:clients!fk_evv_visits_client_agency(id, first_name, last_name, avatar_url),
-            service_type:evv_service_types(name),
-            funding_source:evv_funding_sources(name)
-          `)
-          .eq("agency_id", agencyId)
-          .order("scheduled_start", { ascending: false });
-
-        if (visitsError) throw visitsError;
-
-        // Fetch all exceptions for these visits
-        const visitIds = visitsData?.map((v: { id: string }) => v.id) ?? [];
-        const { data: exceptionsData, error: exceptionsError } = visitIds.length > 0
-          ? await supabase.from("evv_exceptions").select("*").in("visit_id", visitIds)
-          : { data: [], error: null };
-
-        if (exceptionsError) throw exceptionsError;
-
-        // Map exceptions by visit_id
-        type ExceptionRow = { visit_id: string; [key: string]: unknown };
-        const exceptionsByVisit = (exceptionsData ?? [] as ExceptionRow[]).reduce(
-          (acc: Record<string, ExceptionRow[]>, ex: ExceptionRow) => {
-            if (!acc[ex.visit_id]) acc[ex.visit_id] = [];
-            acc[ex.visit_id].push(ex);
-            return acc;
-          },
-          {} as Record<string, ExceptionRow[]>
-        );
-
-        // Transform to TimeClockEntry[]
-        const mappedEntries = (visitsData ?? []).map((row: any) => {
-          const joinedRow: EVVVisitJoinedRow = {
-            ...row,
-            employee_first_name: row.employee?.first_name ?? "",
-            employee_last_name: row.employee?.last_name ?? "",
-            employee_avatar_url: row.employee?.avatar_url ?? null,
-            client_first_name: row.client?.first_name ?? "",
-            client_last_name: row.client?.last_name ?? "",
-            client_avatar_url: row.client?.avatar_url ?? null,
-            service_type_name: row.service_type?.name ?? "",
-            funding_source_name: row.funding_source?.name ?? "",
-            exceptions: exceptionsByVisit[row.id] ?? [],
-          };
-          return mapVisitRowToTimeClockEntry(joinedRow);
-        });
-
-        setEntries(mappedEntries);
-      } catch (err) {
-        const msg =
-          err instanceof Error
-            ? err.message
-            : (err as { message?: string })?.message ?? "Failed to load visits";
-        console.error("Failed to fetch EVV visits:", err);
-        setFetchError(msg);
-      } finally {
-        setIsLoading(false);
-      }
+  const fetchVisits = React.useCallback(async () => {
+    if (!agencyId) {
+      setIsLoading(false);
+      return;
     }
+    try {
+      setIsLoading(true);
+      setFetchError(null);
 
+      const { data: visitsData, error: visitsError } = await supabase
+        .from("evv_visits")
+        .select(`
+          *,
+          employee:employees!fk_evv_visits_employee_agency(id, first_name, last_name, avatar_url),
+          client:clients!fk_evv_visits_client_agency(id, first_name, last_name, avatar_url),
+          service_type:evv_service_types(name),
+          funding_source:evv_funding_sources(name)
+        `)
+        .eq("agency_id", agencyId)
+        .order("scheduled_start", { ascending: false });
+
+      if (visitsError) throw visitsError;
+
+      const visitIds = visitsData?.map((v: { id: string }) => v.id) ?? [];
+      const { data: exceptionsData, error: exceptionsError } = visitIds.length > 0
+        ? await supabase.from("evv_exceptions").select("*").in("visit_id", visitIds)
+        : { data: [], error: null };
+
+      if (exceptionsError) throw exceptionsError;
+
+      type ExceptionRow = { visit_id: string; [key: string]: unknown };
+      const exceptionsByVisit = (exceptionsData ?? [] as ExceptionRow[]).reduce(
+        (acc: Record<string, ExceptionRow[]>, ex: ExceptionRow) => {
+          if (!acc[ex.visit_id]) acc[ex.visit_id] = [];
+          acc[ex.visit_id].push(ex);
+          return acc;
+        },
+        {} as Record<string, ExceptionRow[]>
+      );
+
+      const mappedEntries = (visitsData ?? []).map((row: any) => {
+        const joinedRow: EVVVisitJoinedRow = {
+          ...row,
+          employee_first_name: row.employee?.first_name ?? "",
+          employee_last_name: row.employee?.last_name ?? "",
+          employee_avatar_url: row.employee?.avatar_url ?? null,
+          client_first_name: row.client?.first_name ?? "",
+          client_last_name: row.client?.last_name ?? "",
+          client_avatar_url: row.client?.avatar_url ?? null,
+          service_type_name: row.service_type?.name ?? "",
+          funding_source_name: row.funding_source?.name ?? "",
+          exceptions: exceptionsByVisit[row.id] ?? [],
+        };
+        return mapVisitRowToTimeClockEntry(joinedRow);
+      });
+
+      setEntries(mappedEntries);
+    } catch (err) {
+      const msg =
+        err instanceof Error
+          ? err.message
+          : (err as { message?: string })?.message ?? "Failed to load visits";
+      console.error("Failed to fetch EVV visits:", err);
+      setFetchError(msg);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [agencyId, supabase]);
+
+  React.useEffect(() => {
     fetchVisits();
-  }, [agencyId]);
+  }, [fetchVisits]);
+
+  // Refetch whenever the tab regains focus, but only if data is stale (>30s)
+  const lastFetchedAtRef = React.useRef<number>(0);
+  const originalFetchVisits = fetchVisits;
+  const throttledFetchVisits = React.useCallback(async () => {
+    const now = Date.now();
+    if (now - lastFetchedAtRef.current < 30_000) return;
+    lastFetchedAtRef.current = now;
+    await originalFetchVisits();
+  }, [originalFetchVisits]);
+
+  React.useEffect(() => {
+    lastFetchedAtRef.current = Date.now();
+  }, [entries]);
+
+  React.useEffect(() => {
+    const handleVisibility = () => {
+      if (document.visibilityState === "visible") throttledFetchVisits();
+    };
+    document.addEventListener("visibilitychange", handleVisibility);
+    return () => document.removeEventListener("visibilitychange", handleVisibility);
+  }, [throttledFetchVisits]);
 
   // Calculate KPIs
   const kpis = React.useMemo(() => {
@@ -138,9 +158,9 @@ export default function EVVPage() {
     return { totalVisits, pendingCount, verifiedCount, exceptionCount, onTimePercentage, pendingApprovalHours };
   }, [entries]);
 
-  // Get unique values for filters
-  const serviceTypes = Array.from(new Set(entries.map(e => e.serviceType)));
-  const fundingSources = Array.from(new Set(entries.map(e => e.fundingSource)));
+  // Get unique values for filters (memoized to avoid recalculating on every render)
+  const serviceTypes = React.useMemo(() => Array.from(new Set(entries.map(e => e.serviceType))), [entries]);
+  const fundingSources = React.useMemo(() => Array.from(new Set(entries.map(e => e.fundingSource))), [entries]);
 
   // Filter entries
   const filteredEntries = React.useMemo(() => {
@@ -371,7 +391,7 @@ export default function EVVPage() {
       toast.success(`${selectedEntries.length} visit(s) flagged for review`);
       
       // Refetch to update the list
-      window.location.reload();
+      await fetchVisits();
     } catch (err) {
       console.error("Failed to bulk flag:", err);
       toast.error("Failed to flag visits. Please try again.");
@@ -458,6 +478,7 @@ export default function EVVPage() {
   };
 
   const datePills = [
+    { value: "all", label: "All" },
     { value: "today", label: "Today" },
     { value: "this-week", label: "This Week" },
     { value: "custom", label: "Custom" },
@@ -610,18 +631,10 @@ export default function EVVPage() {
             <div className="w-px h-4 bg-neutral-200" />
 
             {/* Action buttons */}
-            {selectedEntries.length > 0 && (
-              <>
-                <Button variant="outline" size="sm" className="h-7 px-2.5 text-[12px] font-medium border-neutral-200 bg-white hover:bg-neutral-50 gap-1.5" onClick={handleBulkApprove}>
-                  <CheckCircle2 className="h-3.5 w-3.5 text-neutral-400" />
-                  Approve ({selectedEntries.length})
-                </Button>
-                <Button variant="outline" size="sm" className="h-7 px-2.5 text-[12px] font-medium border-neutral-200 bg-white hover:bg-neutral-50 gap-1.5" onClick={handleBulkFlag}>
-                  <Flag className="h-3.5 w-3.5 text-neutral-400" />
-                  Flag ({selectedEntries.length})
-                </Button>
-              </>
-            )}
+            <Button variant="outline" size="sm" className="h-7 px-2.5 text-[12px] font-medium border-neutral-200 bg-white hover:bg-neutral-50 gap-1.5" onClick={() => fetchVisits()} disabled={isLoading}>
+              <RefreshCw className={`h-3.5 w-3.5 text-neutral-400 ${isLoading ? "animate-spin" : ""}`} />
+              Refresh
+            </Button>
             <Button variant="outline" size="sm" className="h-7 px-2.5 text-[12px] font-medium border-neutral-200 bg-white hover:bg-neutral-50 gap-1.5" onClick={handleBulkExport}>
               <Download className="h-3.5 w-3.5 text-neutral-400" />
               Export
@@ -649,8 +662,8 @@ export default function EVVPage() {
           onFilterChange={setVerificationTab}
         />
 
-        {/* White table card */}
-        <div className="overflow-hidden rounded-lg border border-neutral-200 bg-white">
+        {/* Table card */}
+        <Card className="p-0 overflow-hidden rounded-md">
           {isLoading ? (
             <div className="flex flex-col items-center justify-center py-24 gap-3">
               <Loader2 className="h-8 w-8 animate-spin text-neutral-400" />
@@ -666,7 +679,7 @@ export default function EVVPage() {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => window.location.reload()}
+                onClick={() => fetchVisits()}
               >
                 Retry
               </Button>
@@ -684,7 +697,7 @@ export default function EVVPage() {
               }}
             />
           )}
-        </div>
+        </Card>
 
         {/* Detail Drawer */}
         <TimeClockDetailDrawer

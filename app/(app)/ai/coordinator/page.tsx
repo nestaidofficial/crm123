@@ -975,80 +975,53 @@ export default function CoordinatorPage() {
   });
 
   return (
-    <div className="space-y-4">
-      {/* ── Page heading ── */}
+    <Tabs defaultValue="coverage-log" className="space-y-4">
+      {/* ── Header with Tabs ── */}
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-[16px] font-semibold text-neutral-900">AI Coordinator</h1>
-          <p className="text-[12px] text-neutral-500 font-normal mt-0.5">
-            Coverage requests, caregiver outreach, and shift reassignment log
-          </p>
-        </div>
-        <div className="flex items-center gap-2 mr-8">
-          <Button
-            variant="outline"
-            size="sm"
-            className="h-9 gap-2 text-[13px] px-4"
-            onClick={() => setShowSetup(true)}
+        <TabsList className="gap-2 rounded-none bg-transparent h-auto p-0">
+          <TabsTrigger
+            className="data-[state=active]:bg-[#F4F4F6] data-[state=active]:text-neutral-900 border-border relative h-auto flex-col px-4 py-2 text-xs data-[state=active]:shadow-none"
+            value="coverage-log"
           >
-            <Settings className="h-3.5 w-3.5" />
-            Settings
-          </Button>
-        </div>
-      </div>
-
-      {/* ── Tabs ── */}
-      <Tabs defaultValue="coverage-log">
-        <div className="flex items-center justify-between mb-3">
-          <ScrollArea className="flex-1">
-            <TabsList className="h-auto -space-x-px bg-background p-0 shadow-sm shadow-black/5 rtl:space-x-reverse">
-              <TabsTrigger
-                value="coverage-log"
-                className="relative overflow-hidden rounded-none border border-border py-2 after:pointer-events-none after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 first:rounded-s last:rounded-e data-[state=active]:bg-muted data-[state=active]:after:bg-primary"
-              >
-                <Database
-                  className="-ms-0.5 me-1.5 opacity-60"
-                  size={16}
-                  strokeWidth={2}
-                  aria-hidden="true"
-                />
-                Coverage Log
-              </TabsTrigger>
-              <TabsTrigger
-                value="requests"
-                className="relative overflow-hidden rounded-none border border-border py-2 after:pointer-events-none after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 first:rounded-s last:rounded-e data-[state=active]:bg-muted data-[state=active]:after:bg-primary"
-              >
-                <ClipboardList
-                  className="-ms-0.5 me-1.5 opacity-60"
-                  size={16}
-                  strokeWidth={2}
-                  aria-hidden="true"
-                />
-                Requests
-                {coordRequests.filter((r) => r.status === "pending").length > 0 && (
-                  <span className="ml-1.5 inline-flex items-center justify-center h-5 min-w-[20px] px-1.5 rounded-full bg-amber-100 text-amber-700 text-[10px] font-semibold">
-                    {coordRequests.filter((r) => r.status === "pending").length}
-                  </span>
-                )}
-              </TabsTrigger>
-              <TabsTrigger
-                value="coordinator"
-                className="relative overflow-hidden rounded-none border border-border py-2 after:pointer-events-none after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 first:rounded-s last:rounded-e data-[state=active]:bg-muted data-[state=active]:after:bg-primary"
-              >
-                <Activity
-                  className="-ms-0.5 me-1.5 opacity-60"
-                  size={16}
-                  strokeWidth={2}
-                  aria-hidden="true"
-                />
-                Coverage Coordinator
-              </TabsTrigger>
-            </TabsList>
-            <ScrollBar orientation="horizontal" />
-          </ScrollArea>
-          
+            <Database
+              aria-hidden="true"
+              className="mb-1.5 opacity-60"
+              size={16}
+            />
+            Coverage Log
+          </TabsTrigger>
+          <TabsTrigger
+            className="data-[state=active]:bg-[#F4F4F6] data-[state=active]:text-neutral-900 border-border relative h-auto flex-col px-4 py-2 text-xs data-[state=active]:shadow-none"
+            value="requests"
+          >
+            <ClipboardList
+              aria-hidden="true"
+              className="mb-1.5 opacity-60"
+              size={16}
+            />
+            Requests
+            {coordRequests.filter((r) => r.status === "pending").length > 0 && (
+              <span className="absolute -top-1 -right-1 inline-flex items-center justify-center h-4 min-w-[16px] px-1 rounded-full bg-amber-100 text-amber-700 text-[9px] font-semibold">
+                {coordRequests.filter((r) => r.status === "pending").length}
+              </span>
+            )}
+          </TabsTrigger>
+          <TabsTrigger
+            className="data-[state=active]:bg-[#F4F4F6] data-[state=active]:text-neutral-900 border-border relative h-auto flex-col px-4 py-2 text-xs data-[state=active]:shadow-none"
+            value="coordinator"
+          >
+            <Activity
+              aria-hidden="true"
+              className="mb-1.5 opacity-60"
+              size={16}
+            />
+            Coverage Coordinator
+          </TabsTrigger>
+        </TabsList>
+        
+        <div className="flex items-center gap-2">
           {/* Auto Scheduler Toggle */}
-          <div className="flex items-center gap-2 ml-4 mr-8 rounded-full border border-neutral-200 bg-white px-3 py-2">
+          <div className="flex items-center gap-2 rounded-full border border-neutral-200 bg-white px-3 py-2">
             <Switch
               checked={autoSchedulerEnabled}
               onCheckedChange={handleAutoSchedulerToggle}
@@ -1067,7 +1040,18 @@ export default function CoordinatorPage() {
               <div className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
             ) : null}
           </div>
+
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-9 gap-2 text-[13px] px-4"
+            onClick={() => setShowSetup(true)}
+          >
+            <Settings className="h-3.5 w-3.5" />
+            Settings
+          </Button>
         </div>
+      </div>
 
         {/* ══════════════════════════════════════
             TAB 1 — Coverage Log (Data Table)
@@ -1574,6 +1558,5 @@ export default function CoordinatorPage() {
           </div>
         </TabsContent>
       </Tabs>
-    </div>
   );
 }

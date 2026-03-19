@@ -87,7 +87,7 @@ const inputBase =
 const inputTitle = "text-[15px] min-h-[28px] leading-[1.5]";
 const selectTriggerClass =
   "h-auto min-h-0 border-0 p-0 bg-transparent shadow-none focus:ring-0 focus:ring-offset-0 text-[14px] flex-1 min-w-0 [&>span]:text-neutral-400 data-[placeholder]:text-neutral-400 [&>svg]:hidden";
-const dropdownContent = "rounded-xl border border-neutral-200/80 bg-white shadow-lg max-h-[200px] overflow-y-auto py-1.5";
+const dropdownContent = "rounded-md border border-neutral-200/80 bg-white shadow-lg max-h-[200px] overflow-y-auto py-1.5";
 const cardClass = "border border-neutral-200/60 shadow-md rounded-[20px] overflow-hidden bg-white";
 const cardHeaderClass = "flex items-center justify-between px-5 py-3";
 const cardTitleClass = "text-[15px] font-semibold text-neutral-900";

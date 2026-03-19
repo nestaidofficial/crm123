@@ -22,8 +22,8 @@ import {
 import { useClientsStore } from "@/store/useClientsStore";
 import { deleteClientAvatar } from "@/lib/supabase/storage";
 import { toast } from "sonner";
+import { apiFetch } from "@/lib/api-fetch";
 import {
-  Type,
   Calendar,
   Phone,
   Mail,
@@ -33,7 +33,6 @@ import {
   FileText,
   Trash2,
 } from "lucide-react";
-import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import { ServiceMultiSelect } from "@/components/shared/service-multi-select";
 
@@ -45,12 +44,11 @@ const iconClass = "h-4 w-4 shrink-0";
 const errorClass = "text-[11px] text-red-500 -mt-1 pl-40";
 
 function EditRow({
-  icon: Icon,
   label,
   id,
   children,
 }: {
-  icon: React.ComponentType<{ className?: string }>;
+  icon?: React.ComponentType<{ className?: string }>;
   label: string;
   id?: string;
   children: React.ReactNode;
@@ -58,10 +56,7 @@ function EditRow({
   return (
     <div className={rowClass}>
       <div className={labelCellClass}>
-        <Icon className={iconClass} />
-        <Label htmlFor={id} className="text-body-m cursor-pointer font-normal">
-          {label}
-        </Label>
+        <span className="text-body-m">{label}</span>
       </div>
       <div className="flex-1 min-w-0 text-body-m text-neutral-900">{children}</div>
     </div>
@@ -92,6 +87,9 @@ export function ClientProfileEditCard({
   onSuccess,
 }: ClientProfileEditCardProps) {
   const [isSaving, setIsSaving] = useState(false);
+  const [selectedServiceIds, setSelectedServiceIds] = useState<string[]>(
+    () => patient?.services?.map((s) => s.id) ?? []
+  );
   const updateClient = useClientsStore((state) => state.updateClient);
 
   const form = useForm<ClientFormValues>({
@@ -172,7 +170,7 @@ export function ClientProfileEditCard({
           {/* Basic Information */}
           <div className="space-y-0">
             <h3 className="text-[15px] font-semibold text-neutral-900 mb-3">Basic Information</h3>
-            <EditRow icon={Type} label="First Name" id="edit-firstName">
+            <EditRow label="First Name" id="edit-firstName">
               <Controller
                 name="firstName"
                 control={control}
@@ -182,7 +180,7 @@ export function ClientProfileEditCard({
               />
             </EditRow>
             {errors.firstName && <p className={errorClass}>{errors.firstName.message}</p>}
-            <EditRow icon={Type} label="Last Name" id="edit-lastName">
+            <EditRow label="Last Name" id="edit-lastName">
               <Controller
                 name="lastName"
                 control={control}
@@ -192,12 +190,15 @@ export function ClientProfileEditCard({
               />
             </EditRow>
             {errors.lastName && <p className={errorClass}>{errors.lastName.message}</p>}
-            <EditRow icon={Calendar} label="Date of Birth" id="edit-dob">
+            <EditRow label="Date of Birth" id="edit-dob">
               <Controller
                 name="dob"
                 control={control}
                 render={({ field }) => (
-                  <Input {...field} id="edit-dob" type="date" className={cn(inputBase, "w-full")} />
+                  <div className="flex items-center gap-3 w-full">
+                    <Calendar className="h-4 w-4 text-neutral-400 shrink-0" />
+                    <Input {...field} id="edit-dob" type="date" className={cn(inputBase, "flex-1")} />
+                  </div>
                 )}
               />
             </EditRow>
@@ -208,7 +209,7 @@ export function ClientProfileEditCard({
                 control={control}
                 render={({ field }) => (
                   <Select value={field.value} onValueChange={field.onChange}>
-                    <SelectTrigger id="edit-gender" className="w-full h-auto border-0 p-0 bg-transparent shadow-none">
+                    <SelectTrigger id="edit-gender" className={cn(inputBase, "w-full focus:ring-0 focus:ring-offset-0")}>
                       <SelectValue placeholder="Select gender" />
                     </SelectTrigger>
                     <SelectContent>
@@ -386,18 +387,19 @@ export function ClientProfileEditCard({
           <div className="space-y-0">
             <h3 className="text-[15px] font-semibold text-neutral-900 mb-3">Services</h3>
             <ServiceMultiSelect
-              value={patient?.services?.map(s => s.id) || []}
+              value={selectedServiceIds}
               onChange={async (serviceIds) => {
+                setSelectedServiceIds(serviceIds);
                 if (patient?.id) {
                   try {
-                    await fetch(`/api/clients/${patient.id}/services`, {
+                    await apiFetch(`/api/clients/${patient.id}/services`, {
                       method: "PUT",
                       headers: { "Content-Type": "application/json" },
                       body: JSON.stringify({ serviceIds }),
                     });
-                    toast.success("Services updated successfully");
-                  } catch (error) {
+                  } catch {
                     toast.error("Failed to update services");
+                    setSelectedServiceIds(patient?.services?.map((s) => s.id) ?? []);
                   }
                 }
               }}

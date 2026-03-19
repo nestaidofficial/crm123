@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { Check, ChevronDown, X } from "lucide-react";
+import { useState, useEffect, useRef } from "react";
+import { Check, ChevronDown, ChevronUp, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Popover,
@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/popover";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
+import { apiFetch } from "@/lib/api-fetch";
 
 interface Service {
   id: string;
@@ -34,12 +35,15 @@ export function ServiceMultiSelect({
   const [services, setServices] = useState<Service[]>([]);
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
+  const [canScrollUp, setCanScrollUp] = useState(false);
+  const [canScrollDown, setCanScrollDown] = useState(false);
+  const scrollRef = useRef<HTMLDivElement>(null);
 
   // Fetch services on mount
   useEffect(() => {
     const fetchServices = async () => {
       try {
-        const response = await fetch("/api/services");
+        const response = await apiFetch("/api/services");
         if (response.ok) {
           const data = await response.json();
           setServices(data.data || []);
@@ -53,6 +57,38 @@ export function ServiceMultiSelect({
 
     fetchServices();
   }, []);
+
+  // Check scroll position
+  const checkScroll = () => {
+    if (scrollRef.current) {
+      const { scrollTop, scrollHeight, clientHeight } = scrollRef.current;
+      setCanScrollUp(scrollTop > 0);
+      setCanScrollDown(scrollTop + clientHeight < scrollHeight - 1);
+    }
+  };
+
+  // Check scroll on open and when services change
+  useEffect(() => {
+    if (open && scrollRef.current) {
+      checkScroll();
+    }
+  }, [open, services]);
+
+  const handleScroll = () => {
+    checkScroll();
+  };
+
+  const scrollUp = () => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollBy({ top: -50, behavior: "smooth" });
+    }
+  };
+
+  const scrollDown = () => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollBy({ top: 50, behavior: "smooth" });
+    }
+  };
 
   const selectedServices = services.filter(service => value.includes(service.id));
 
@@ -103,13 +139,22 @@ export function ServiceMultiSelect({
                     className="inline-flex items-center gap-1.5 rounded-full bg-neutral-100/80 border border-neutral-200/60 pl-2 pr-1 py-0.5 text-[13px] text-neutral-700"
                   >
                     {service.name}
-                    <button
+                    <span
+                      role="button"
+                      tabIndex={disabled ? -1 : 0}
+                      aria-label={`Remove ${service.name}`}
                       onClick={(e) => handleRemoveService(service.id, e)}
-                      className="hover:bg-neutral-200 rounded-full p-0.5 text-neutral-400 hover:text-neutral-700"
-                      disabled={disabled}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault();
+                          if (!disabled) handleRemoveService(service.id, e as unknown as React.MouseEvent);
+                        }
+                      }}
+                      className="hover:bg-neutral-200 rounded-full p-0.5 text-neutral-400 hover:text-neutral-700 cursor-pointer"
+                      aria-disabled={disabled}
                     >
                       <X className="h-3 w-3" />
-                    </button>
+                    </span>
                   </Badge>
                 ))
               ) : (
@@ -120,32 +165,54 @@ export function ServiceMultiSelect({
           </Button>
         </PopoverTrigger>
         <PopoverContent 
-          className="rounded-xl border border-neutral-200/80 bg-white shadow-lg max-h-[200px] overflow-y-auto py-1.5 w-full"
+          className="rounded-md border border-neutral-200/80 bg-white shadow-lg p-0 w-full overflow-hidden"
           align="start"
         >
-          {services.length === 0 ? (
-            <div className="text-[12px] text-neutral-500 italic py-2 px-3">
-              No services available
-            </div>
-          ) : (
-            services.map(service => (
-              <button
-                key={service.id}
-                onClick={() => handleServiceToggle(service.id)}
-                className="w-full flex items-center gap-2.5 px-3 py-2 hover:bg-neutral-50 text-left text-[13px] text-neutral-800"
-                disabled={disabled}
-              >
-                <div className={cn(
-                  "h-4 w-4 border border-neutral-300 rounded flex items-center justify-center",
-                  value.includes(service.id) && "bg-neutral-900 border-neutral-900"
-                )}>
-                  {value.includes(service.id) && (
-                    <Check className="h-3 w-3 text-white" />
-                  )}
-                </div>
-                <span className="flex-1">{service.name}</span>
-              </button>
-            ))
+          {canScrollUp && (
+            <button
+              onClick={scrollUp}
+              className="flex cursor-default items-center justify-center py-1 w-full hover:bg-neutral-50"
+            >
+              <ChevronUp className="h-4 w-4" />
+            </button>
+          )}
+          <div
+            ref={scrollRef}
+            onScroll={handleScroll}
+            className="max-h-[200px] overflow-y-auto py-1.5"
+          >
+            {services.length === 0 ? (
+              <div className="text-[12px] text-neutral-500 italic py-2 px-3">
+                No services available
+              </div>
+            ) : (
+              services.map(service => (
+                <button
+                  key={service.id}
+                  onClick={() => handleServiceToggle(service.id)}
+                  className="w-full flex items-center gap-2.5 px-3 py-2 hover:bg-neutral-50 text-left text-[13px] text-neutral-800"
+                  disabled={disabled}
+                >
+                  <div className={cn(
+                    "h-4 w-4 border border-neutral-300 rounded flex items-center justify-center",
+                    value.includes(service.id) && "bg-neutral-900 border-neutral-900"
+                  )}>
+                    {value.includes(service.id) && (
+                      <Check className="h-3 w-3 text-white" />
+                    )}
+                  </div>
+                  <span className="flex-1">{service.name}</span>
+                </button>
+              ))
+            )}
+          </div>
+          {canScrollDown && (
+            <button
+              onClick={scrollDown}
+              className="flex cursor-default items-center justify-center py-1 w-full hover:bg-neutral-50"
+            >
+              <ChevronDown className="h-4 w-4" />
+            </button>
           )}
         </PopoverContent>
       </Popover>

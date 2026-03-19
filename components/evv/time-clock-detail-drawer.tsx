@@ -488,7 +488,10 @@ export function TimeClockDetailDrawer({
 
       const res = await fetch("/api/evv/gps-capture", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          ...(agencyId ? { "x-agency-id": agencyId } : {}),
+        },
         body: JSON.stringify({
           visitId: entry.id,
           captureType,

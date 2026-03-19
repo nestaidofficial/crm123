@@ -1571,13 +1571,6 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-row items-center justify-between">
-        <h1 className="text-2xl font-bold tracking-tight lg:text-3xl text-neutral-900">
-          Agency Operations
-        </h1>
-      </div>
-
       <SummaryCards />
 
       <div className="gap-4 space-y-4 md:grid-cols-2 lg:grid lg:grid-cols-7 lg:space-y-0">

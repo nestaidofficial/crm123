@@ -68,7 +68,7 @@ export function ChecklistSection({
     <div className={cn("space-y-4", className)}>
       {/* Progress Summary */}
       {showProgress && (
-        <div className="p-4 rounded-xl border border-neutral-200 bg-neutral-50">
+        <div className="p-4 rounded-md border border-neutral-200 bg-neutral-50">
           <div className="flex items-center justify-between mb-2">
             <span className="text-body-s font-medium text-neutral-900">
               Progress
@@ -92,7 +92,7 @@ export function ChecklistSection({
           <div
             key={item.id}
             className={cn(
-              "flex items-center justify-between p-4 border border-neutral-200 rounded-xl bg-white",
+              "flex items-center justify-between p-4 border border-neutral-200 rounded-md bg-white",
               item.status === "locked" && "opacity-60"
             )}
           >

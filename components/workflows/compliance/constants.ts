@@ -203,6 +203,22 @@ export const DEFAULT_CAREGIVER_PHASES: CompliancePhase[] = [
         outcome: 'Offer accepted → unlock compliance',
         auditHistory: [],
       },
+      {
+        id: 'step-8',
+        stepNumber: 5,
+        title: 'Transportation Readiness',
+        description: 'Conditional logic: If driving → Driver\'s License, Auto Insurance | If not driving → Transportation Acknowledgement',
+        status: 'not_started',
+        conditional: {
+          field: 'driving',
+          value: true,
+        },
+        documents: [],
+        requiredDocumentTypes: ['transportation'],
+        isComplianceGate: false,
+        outcome: 'Transportation verified',
+        auditHistory: [],
+      },
     ],
   },
   {
@@ -216,7 +232,7 @@ export const DEFAULT_CAREGIVER_PHASES: CompliancePhase[] = [
     steps: [
       {
         id: 'step-5',
-        stepNumber: 5,
+        stepNumber: 6,
         title: 'Background Checks',
         description: 'CORI Authorization + Results (confidential) | SORI Search Record (best practice)',
         status: 'not_started',
@@ -229,7 +245,7 @@ export const DEFAULT_CAREGIVER_PHASES: CompliancePhase[] = [
       },
       {
         id: 'step-6',
-        stepNumber: 6,
+        stepNumber: 7,
         title: 'Training & Certification',
         description: 'Training module assigned | Assessment completed | Passing score ≥ 80% | Certification auto-generated',
         status: 'not_started',
@@ -242,7 +258,7 @@ export const DEFAULT_CAREGIVER_PHASES: CompliancePhase[] = [
       },
       {
         id: 'step-7',
-        stepNumber: 7,
+        stepNumber: 8,
         title: 'Onboarding Packet',
         description: 'Signed acknowledgements: HIPAA/Confidentiality, Code of Conduct, Abuse & Neglect Reporting, Handbook, Availability Confirmation, Emergency Contact, Fitness-for-Duty (self-attestation)',
         status: 'not_started',
@@ -251,22 +267,6 @@ export const DEFAULT_CAREGIVER_PHASES: CompliancePhase[] = [
         isComplianceGate: true,
         complianceRuleId: 'onboarding_packet',
         outcome: 'All acknowledgements signed',
-        auditHistory: [],
-      },
-      {
-        id: 'step-8',
-        stepNumber: 8,
-        title: 'Transportation Readiness',
-        description: 'Conditional logic: If driving → Driver\'s License, Auto Insurance | If not driving → Transportation Acknowledgement',
-        status: 'not_started',
-        conditional: {
-          field: 'driving',
-          value: true,
-        },
-        documents: [],
-        requiredDocumentTypes: ['transportation'],
-        isComplianceGate: false,
-        outcome: 'Transportation verified',
         auditHistory: [],
       },
     ],

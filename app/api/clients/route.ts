@@ -81,10 +81,28 @@ export async function GET(request: NextRequest) {
       ])
     );
 
+    // Batch-fetch services for all clients in one query
+    const { data: allClientServices } = clientIds.length > 0
+      ? await supabase
+          .from("client_services")
+          .select("client_id, agency_services!inner(id, name)")
+          .in("client_id", clientIds)
+          .eq("agency_id", agencyId)
+      : { data: [] as Array<{ client_id: string; agency_services: { id: string; name: string } }> };
+
+    const servicesByClientId = new Map<string, { id: string; name: string }[]>();
+    for (const cs of allClientServices ?? []) {
+      const svc = cs.agency_services as unknown as { id: string; name: string };
+      const list = servicesByClientId.get(cs.client_id) ?? [];
+      list.push({ id: svc.id, name: svc.name });
+      servicesByClientId.set(cs.client_id, list);
+    }
+
     const data = clientRows.map((row) => {
       const api = mapRowToClient(row);
       const primary = primaryByClientId.get(row.id);
       if (primary) api.primaryContact = primary;
+      api.services = servicesByClientId.get(row.id) ?? [];
       return api;
     });
     return jsonResponse({ data, count: count ?? 0 }, 200);

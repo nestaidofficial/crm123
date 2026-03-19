@@ -56,6 +56,7 @@ import {
   ChevronDown,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { apiFetch } from "@/lib/api-fetch";
 
 const inputBase =
   "min-h-[28px] py-1 border-0 px-0 bg-transparent shadow-none focus-visible:ring-0 text-[14px] leading-[1.5] placeholder:text-neutral-400 caret-neutral-900 outline-none focus:outline-none focus:ring-0 focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0 self-center";
@@ -66,7 +67,7 @@ const rowClass = "flex items-center gap-3 pb-3 border-b border-neutral-100";
 const iconClass = "h-5 w-5 text-neutral-400 shrink-0";
 const iconSmall = "h-4 w-4 text-neutral-400 shrink-0";
 const errorClass = "text-[11px] text-red-500 -mt-1 pl-8";
-const dropdownContent = "rounded-xl border border-neutral-200/80 bg-white shadow-lg max-h-[200px] overflow-y-auto py-1.5";
+const dropdownContent = "rounded-md border border-neutral-200/80 bg-white shadow-lg max-h-[200px] overflow-y-auto py-1.5";
 
 const GENDER_OPTIONS = ["Male", "Female", "Non-binary", "Other", "Prefer not to say"] as const;
 
@@ -172,7 +173,7 @@ export function ClientCreateWizard({ onComplete }: ClientCreateWizardProps) {
       const serviceIds = (values as Record<string, unknown>).serviceIds as string[] | undefined;
       if (serviceIds && serviceIds.length > 0) {
         try {
-          await fetch(`/api/clients/${created.id}/services`, {
+          await apiFetch(`/api/clients/${created.id}/services`, {
             method: "PUT",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ serviceIds }),

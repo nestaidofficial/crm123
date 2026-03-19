@@ -147,19 +147,21 @@ export async function POST(
       ? (typeInput as (typeof DOC_TYPES)[number])
       : "other";
 
-    const nameInput = formData.get("name");
-    const documentName =
-      typeof nameInput === "string" && nameInput.trim().length > 0
-        ? nameInput.trim().slice(0, 500)
-        : null;
-    if (!documentName) return errorResponse("Document name is required", 400);
-
-    const expiryInput = formData.get("expiry");
-    let expiryDate: string | null = null;
-    if (typeof expiryInput === "string" && expiryInput.trim()) {
-      const d = new Date(expiryInput.trim());
-      if (!Number.isNaN(d.getTime())) expiryDate = d.toISOString().slice(0, 10);
+    // Per-file metadata: JSON array of { name?, expiryDate? }
+    // Also supports legacy single-file fields: "name" and "expiry"
+    let perFileMeta: Array<{ name?: string; expiryDate?: string }> = [];
+    const metadataRaw = formData.get("metadata");
+    if (typeof metadataRaw === "string") {
+      try {
+        perFileMeta = JSON.parse(metadataRaw) as typeof perFileMeta;
+      } catch {
+        // ignore malformed metadata
+      }
     }
+
+    // Legacy single-name/expiry fallback (used by compliance workflow uploads)
+    const legacyName = formData.get("name");
+    const legacyExpiry = formData.get("expiry");
 
     const stepIdInput = formData.get("step_id");
     const complianceStepId =
@@ -173,20 +175,38 @@ export async function POST(
     );
     if (files.length === 0) return errorResponse("No files provided", 400);
 
+    if (!client) {
+      return errorResponse("Storage not configured. Set SUPABASE_SERVICE_ROLE_KEY in .env.local.", 500);
+    }
+
     const created: Array<{ id: string; name: string; type: string; size: string; uploadedDate: string; expiryDate?: string; complianceStepId?: string }> = [];
 
-    for (const file of files) {
-      const fileName = file.name;
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      const meta = perFileMeta[i] ?? {};
+
+      // Resolve name: per-file meta → legacy single field → file.name
+      const resolvedName =
+        meta.name?.trim() ||
+        (typeof legacyName === "string" && legacyName.trim() ? legacyName.trim() : null) ||
+        file.name;
+
+      // Resolve expiry date
+      let expiryDate: string | null = null;
+      const rawExpiry =
+        meta.expiryDate?.trim() ||
+        (typeof legacyExpiry === "string" && legacyExpiry.trim() ? legacyExpiry.trim() : null);
+      if (rawExpiry) {
+        const d = new Date(rawExpiry);
+        if (!Number.isNaN(d.getTime())) expiryDate = d.toISOString().slice(0, 10);
+      }
+
       const contentType = file.type || undefined;
       if (file.size > MAX_FILE_BYTES) {
-        return errorResponse(`File "${fileName}" exceeds 10MB limit`, 400);
+        return errorResponse(`File "${file.name}" exceeds 10MB limit`, 400);
       }
-      const sanitized = sanitizeFileName(fileName);
+      const sanitized = sanitizeFileName(file.name);
       const path = `${agencyId}/${employeeId}/${crypto.randomUUID()}-${sanitized}`;
-
-      if (!client) {
-        return errorResponse("Storage not configured. Set SUPABASE_SERVICE_ROLE_KEY in .env.local.", 500);
-      }
 
       const { error: uploadError } = await client.storage
         .from(BUCKET)
@@ -205,7 +225,7 @@ export async function POST(
         .insert({
           employee_id: employeeId,
           agency_id: agencyId,
-          name: documentName,
+          name: resolvedName,
           type: docType,
           file_path: path,
           file_size_bytes: file.size,
@@ -217,7 +237,7 @@ export async function POST(
         .single();
 
       if (insertError) {
-        if (client) await client.storage.from(BUCKET).remove([path]);
+        await client.storage.from(BUCKET).remove([path]);
         return errorResponse(insertError.message || "Failed to save document record", 500);
       }
 

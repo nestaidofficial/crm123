@@ -74,7 +74,30 @@ export async function GET(request: NextRequest) {
     }
 
     const employeeRows = (rows ?? []) as EmployeeRow[];
-    const data = employeeRows.map((row) => mapRowToEmployee(row));
+    const employeeIds = employeeRows.map((r) => r.id);
+
+    // Batch-fetch services for all employees in one query
+    const { data: allEmployeeServices } = employeeIds.length > 0
+      ? await supabase
+          .from("employee_services")
+          .select("employee_id, agency_services!inner(id, name)")
+          .in("employee_id", employeeIds)
+          .eq("agency_id", agencyId)
+      : { data: [] as Array<{ employee_id: string; agency_services: { id: string; name: string } }> };
+
+    const servicesByEmployeeId = new Map<string, { id: string; name: string }[]>();
+    for (const es of allEmployeeServices ?? []) {
+      const svc = es.agency_services as unknown as { id: string; name: string };
+      const list = servicesByEmployeeId.get(es.employee_id) ?? [];
+      list.push({ id: svc.id, name: svc.name });
+      servicesByEmployeeId.set(es.employee_id, list);
+    }
+
+    const data = employeeRows.map((row) => {
+      const api = mapRowToEmployee(row);
+      api.services = servicesByEmployeeId.get(row.id) ?? [];
+      return api;
+    });
 
     return jsonResponse({ data, count: count ?? 0 }, 200);
   } catch (e) {
