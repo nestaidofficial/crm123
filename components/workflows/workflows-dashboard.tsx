@@ -188,7 +188,7 @@ export function WorkflowsDashboard({ section = "dashboard" }: { section?: string
         ? `${selectedCandidateData.address.city}, ${selectedCandidateData.address.state}`
         : "",
       startDate: "",
-      status: "pending" as const,
+      status: "pending" as "pending" | "completed",
       progress: 0,
       totalSteps: 14,
       avatarUrl: selectedCandidateData.avatarUrl,
