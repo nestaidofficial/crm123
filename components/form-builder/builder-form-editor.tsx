@@ -51,7 +51,6 @@ export function BuilderFormEditor() {
     [formFields]
   )
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema) as any,
     defaultValues,

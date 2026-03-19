@@ -6,7 +6,6 @@ import { CSS } from "@dnd-kit/utilities"
 
 import { BuilderField, type BuilderFieldProps } from "@/components/form-builder/builder-field"
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export const BuilderSortableField = React.memo(({ formField, form }: BuilderFieldProps) => {
   const {
     attributes,

@@ -16,9 +16,7 @@ import type { FormBuilderField } from "@/types/form-builder-field"
 import { FormBuilderState } from "@/types/form-builder-store"
 
 export interface BuilderFieldProps {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   formField: FormBuilderField
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   form?: UseFormReturn<any, any, any>
   style?: React.CSSProperties
   isDragging?: boolean
