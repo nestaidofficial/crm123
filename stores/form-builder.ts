@@ -3,12 +3,22 @@ import { persist } from "zustand/middleware"
 import { immer } from "zustand/middleware/immer"
 
 import { FormBuilderState } from "@/types/form-builder-store"
+import { DEFAULT_CUSTOMIZATION } from "@/types/form-customization"
 
 export const useFormBuilderStore = create<FormBuilderState>()(
   persist(
     immer((set, get) => ({
+      formId: null,
+      formShortId: null,
       isEditFormFieldOpen: false,
       formFields: [],
+      customization: DEFAULT_CUSTOMIZATION,
+      setFormId: (id) => {
+        set({ formId: id })
+      },
+      setFormShortId: (shortId) => {
+        set({ formShortId: shortId })
+      },
       setFormFields(fields) {
         set({ formFields: fields })
       },
@@ -37,12 +47,25 @@ export const useFormBuilderStore = create<FormBuilderState>()(
         })
       },
       clearFormFields() {
-        set({ formFields: [], selectedFormField: "" })
+        set({ formFields: [], selectedFormField: "", formId: null, formShortId: null })
+      },
+      updateCustomization: (patch) => {
+        set((state) => {
+          Object.assign(state.customization, patch)
+        })
+      },
+      resetCustomization: () => {
+        set({ customization: DEFAULT_CUSTOMIZATION })
       },
     })),
     {
       name: "form-builder-storage",
-      partialize: (state) => ({ formFields: state.formFields }),
+      partialize: (state) => ({
+        formId: state.formId,
+        formShortId: state.formShortId,
+        formFields: state.formFields,
+        customization: state.customization,
+      }),
     }
   )
 )

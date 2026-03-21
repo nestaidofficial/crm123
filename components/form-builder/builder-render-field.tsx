@@ -1,6 +1,7 @@
 import { format } from "date-fns"
 import { CalendarIcon, CheckIcon, ChevronsUpDownIcon } from "lucide-react"
 import type { ControllerRenderProps } from "react-hook-form"
+import { SignaturePadField } from "@/components/form-builder/signature-pad"
 
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
@@ -52,7 +53,7 @@ export function renderBuilderField({ formField, field }: RenderBuilderFieldProps
     case FieldType.INPUT:
       return (
         <BuilderFormFieldWrapper {...formField}>
-          <Input placeholder={formField.placeholder} {...field} />
+          <Input className="rounded-sm" placeholder={formField.placeholder} {...field} />
         </BuilderFormFieldWrapper>
       )
     case FieldType.TEXTAREA:
@@ -60,7 +61,7 @@ export function renderBuilderField({ formField, field }: RenderBuilderFieldProps
         <BuilderFormFieldWrapper {...formField}>
           <Textarea
             placeholder={formField.placeholder}
-            className="resize-none"
+            className="resize-none rounded-sm"
             {...field}
           />
         </BuilderFormFieldWrapper>
@@ -68,18 +69,18 @@ export function renderBuilderField({ formField, field }: RenderBuilderFieldProps
     case FieldType.NUMBER_INPUT:
       return (
         <BuilderFormFieldWrapper {...formField}>
-          <Input placeholder={formField.placeholder} {...field} type="number" />
+          <Input className="rounded-sm" placeholder={formField.placeholder} {...field} type="number" />
         </BuilderFormFieldWrapper>
       )
     case FieldType.EMAIL:
       return (
         <BuilderFormFieldWrapper {...formField}>
-          <Input placeholder={formField.placeholder} {...field} />
+          <Input className="rounded-sm" placeholder={formField.placeholder} {...field} />
         </BuilderFormFieldWrapper>
       )
     case FieldType.CHECKBOX:
       return (
-        <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
+        <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-sm border p-4">
           <FormControl>
             <Checkbox checked={field.value} onCheckedChange={field.onChange} />
           </FormControl>
@@ -99,11 +100,11 @@ export function renderBuilderField({ formField, field }: RenderBuilderFieldProps
             defaultValue={formField.default as string}
           >
             <FormControl>
-              <SelectTrigger>
+              <SelectTrigger className="rounded-sm">
                 <SelectValue placeholder={formField.placeholder} />
               </SelectTrigger>
             </FormControl>
-            <SelectContent>
+            <SelectContent className="rounded-sm">
               {formField.choices.map((choice, idx) => (
                 <SelectItem
                   value={choice.value !== "" ? choice.value : "hello"}
@@ -128,7 +129,7 @@ export function renderBuilderField({ formField, field }: RenderBuilderFieldProps
                 <Button
                   variant="outline"
                   className={cn(
-                    "pl-3 text-left font-normal",
+                    "pl-3 text-left font-normal rounded-sm",
                     !field.value && "text-muted-foreground"
                   )}
                 >
@@ -141,7 +142,7 @@ export function renderBuilderField({ formField, field }: RenderBuilderFieldProps
                 </Button>
               </FormControl>
             </PopoverTrigger>
-            <PopoverContent className="w-auto p-0" align="start">
+            <PopoverContent className="w-auto p-0 rounded-sm" align="start">
               <Calendar
                 mode="single"
                 selected={field.value}
@@ -181,7 +182,7 @@ export function renderBuilderField({ formField, field }: RenderBuilderFieldProps
       )
     case FieldType.SWITCH:
       return (
-        <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+        <FormItem className="flex flex-row items-center justify-between rounded-sm border p-4">
           <div className="space-y-0.5">
             <FormLabel className="text-base">{formField.label}</FormLabel>
             <FormDescription>{formField.description}</FormDescription>
@@ -202,7 +203,7 @@ export function renderBuilderField({ formField, field }: RenderBuilderFieldProps
                   variant="outline"
                   role="combobox"
                   className={cn(
-                    "justify-between",
+                    "justify-between rounded-sm",
                     !field.value && "text-muted-foreground"
                   )}
                 >
@@ -215,7 +216,7 @@ export function renderBuilderField({ formField, field }: RenderBuilderFieldProps
                 </Button>
               </FormControl>
             </PopoverTrigger>
-            <PopoverContent className="p-0" align="start">
+            <PopoverContent className="p-0 rounded-sm" align="start">
               <Command>
                 <CommandInput placeholder="Search language..." />
                 <CommandList>
@@ -270,6 +271,15 @@ export function renderBuilderField({ formField, field }: RenderBuilderFieldProps
           </FormDescription>
           <FormMessage />
         </FormItem>
+      )
+    case FieldType.SIGNATURE:
+      return (
+        <BuilderFormFieldWrapper {...formField}>
+          <SignaturePadField
+            value={field.value}
+            onChange={(dataUrl) => field.onChange(dataUrl ?? "")}
+          />
+        </BuilderFormFieldWrapper>
       )
   }
 }

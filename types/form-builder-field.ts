@@ -13,6 +13,7 @@ export enum FieldType {
   SWITCH = "SWITCH",
   COMBOBOX = "COMBOBOX",
   SLIDER = "SLIDER",
+  SIGNATURE = "SIGNATURE",
 }
 
 interface FormFieldBaseType {
@@ -89,6 +90,10 @@ export interface SliderFormFieldType extends FormFieldBaseType {
   step: number
 }
 
+export interface SignatureFormFieldType extends FormFieldBaseType {
+  type: FieldType.SIGNATURE
+}
+
 export type FormBuilderField =
   | InputFormFieldType
   | TextareaFormFieldType
@@ -101,3 +106,4 @@ export type FormBuilderField =
   | SwitchFormFieldType
   | ComboboxFormFieldType
   | SliderFormFieldType
+  | SignatureFormFieldType

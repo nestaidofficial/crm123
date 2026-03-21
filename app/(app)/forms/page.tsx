@@ -2,7 +2,9 @@
 
 import * as React from "react";
 import { FormsHeader } from "@/components/forms/forms-header";
-import { FormsEmptyState } from "@/components/forms/forms-empty-state";
+import { FormsList } from "@/components/forms/forms-list";
+import { SentFormsList } from "@/components/forms/sent-forms-list";
+import { SubmissionsList } from "@/components/forms/submissions-list";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { FileText, Send, CheckSquare } from "lucide-react";
 
@@ -50,25 +52,13 @@ export default function FormsPage() {
       />
       
       <TabsContent value="templates">
-        <FormsEmptyState />
+        <FormsList />
       </TabsContent>
       <TabsContent value="sent">
-        <div className="text-center py-16">
-          <Send className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-          <h3 className="text-base font-semibold mb-2">No sent forms</h3>
-          <p className="text-sm text-muted-foreground">
-            Forms sent to employees or clients will appear here
-          </p>
-        </div>
+        <SentFormsList />
       </TabsContent>
       <TabsContent value="submissions">
-        <div className="text-center py-16">
-          <CheckSquare className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-          <h3 className="text-base font-semibold mb-2">No submissions yet</h3>
-          <p className="text-sm text-muted-foreground">
-            Completed form submissions will appear here
-          </p>
-        </div>
+        <SubmissionsList />
       </TabsContent>
     </Tabs>
   );

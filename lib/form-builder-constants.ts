@@ -4,6 +4,7 @@ import {
   ChevronsUpDownIcon,
   CircleDotIcon,
   HashIcon,
+  PenLineIcon,
   SlidersHorizontalIcon,
   CheckSquare2,
   TextIcon,
@@ -130,5 +131,13 @@ export const formBuilderFields: FormBuilderField[] = [
     step: 10,
     default: 50,
     registryDependencies: ["slider"],
+  },
+  {
+    type: FieldType.SIGNATURE,
+    name: "Signature",
+    label: "Signature",
+    description: "Draw your signature in the box below.",
+    Icon: PenLineIcon,
+    registryDependencies: [],
   },
 ]

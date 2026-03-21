@@ -44,7 +44,7 @@ export const BuilderField = React.forwardRef<HTMLDivElement, BuilderFieldProps>(
         style={style}
         ref={ref}
       >
-        <div className="absolute -left-12 top-1/2 flex -translate-y-1/2 flex-col gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+        <div className="absolute -left-14 top-1/2 flex -translate-y-1/2 flex-col gap-1 opacity-0 transition-opacity group-hover:opacity-100">
           <BuilderTooltipWrapper text="Edit field">
             <Button
               size="icon"
@@ -83,7 +83,7 @@ export const BuilderField = React.forwardRef<HTMLDivElement, BuilderFieldProps>(
           variant="ghost"
           type="button"
           {...props}
-          className="absolute -right-12 top-1/2 -translate-y-1/2 opacity-0 transition-opacity group-hover:opacity-100"
+          className="absolute -right-14 top-1/2 -translate-y-1/2 opacity-0 transition-opacity group-hover:opacity-100"
         >
           <GripVertical className="size-4" />
         </Button>

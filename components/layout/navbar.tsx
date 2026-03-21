@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -198,16 +199,11 @@ export function Navbar() {
   
   return (
     <header className="h-14 shrink-0 z-50 w-full border-b border-neutral-200/60 bg-[#F4F4F6]">
-      <div className="flex h-14 items-center gap-4 px-4">
+      <div className="flex h-14 items-center gap-4 pl-2 pr-4">
 
         {/* Left: Brand logo */}
-        <div className="flex items-center gap-2.5 shrink-0">
-          <div className="flex h-7 w-7 items-center justify-center rounded-full bg-neutral-900">
-            <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-              <path d="M7 1.5L12 4.5V9.5L7 12.5L2 9.5V4.5L7 1.5Z" fill="white" strokeWidth="0.5"/>
-            </svg>
-          </div>
-          <span className="text-[14px] font-semibold text-neutral-900 tracking-wide">NESSA</span>
+        <div className="flex items-center shrink-0">
+          <Image src="/logo.jpg" alt="Nestaid" width={140} height={44} className="h-11 w-auto object-contain" priority />
         </div>
 
         {/* Center: Search bar */}
